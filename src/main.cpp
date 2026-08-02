@@ -11,6 +11,7 @@
 #include <map>
 #include <numeric>
 #include <optional>
+#include <regex>
 #include <set>
 #include <sstream>
 #include <string>
@@ -43,9 +44,11 @@ struct Options {
   std::string format = "json";
   std::string benchmark_command;
   int runs = 10;
+  int warmups = 0;
   bool allow_ofast = false;
   bool allow_fast_math = false;
   bool allow_native = false;
+  bool strict = false;
   bool verbose = false;
   std::vector<std::string> positional;
 };
@@ -86,15 +89,36 @@ struct BuildConfig {
 
 struct BenchmarkStats {
   int runs = 0;
+  int warmups = 0;
   int failures = 0;
   double min_ms = 0;
   double mean_ms = 0;
+  double median_ms = 0;
+  double stddev_ms = 0;
   double p50_ms = 0;
+  double p90_ms = 0;
   double p95_ms = 0;
   double p99_ms = 0;
   double p999_ms = 0;
   double max_ms = 0;
   double throughput_per_sec = 0;
+};
+
+struct WarningIssue {
+  fs::path file;
+  int line = 0;
+  std::string category;
+  std::string message;
+  std::string severity;
+  std::string possible_fix;
+  bool correctness = false;
+  bool performance = false;
+};
+
+struct ToolInfo {
+  std::string name;
+  bool available = false;
+  std::string version;
 };
 
 std::string shell_quote(const std::string &value) {
@@ -180,10 +204,12 @@ Options parse_args(int argc, char **argv) {
     else if (arg == "--goal") options.goal = need_value(arg);
     else if (arg == "--format") options.format = need_value(arg);
     else if (arg == "--runs") options.runs = std::stoi(need_value(arg));
+    else if (arg == "--warmups") options.warmups = std::stoi(need_value(arg));
     else if (arg == "--command" || arg == "--benchmark-command") options.benchmark_command = need_value(arg);
     else if (arg == "--allow-ofast") options.allow_ofast = true;
     else if (arg == "--allow-fast-math") options.allow_fast_math = true;
     else if (arg == "--allow-native") options.allow_native = true;
+    else if (arg == "--strict") options.strict = true;
     else if (arg == "--verbose") options.verbose = true;
     else options.positional.push_back(arg);
   }
@@ -215,6 +241,83 @@ std::string json_escape(const std::string &s) {
     }
   }
   return out.str();
+}
+
+std::vector<std::string> warning_flags(bool strict) {
+  std::vector<std::string> flags = {
+      "-Wall", "-Wextra", "-Wpedantic", "-Wconversion", "-Wsign-conversion",
+      "-Wshadow", "-Wformat=2", "-Wundef", "-Wdouble-promotion",
+      "-Wnull-dereference", "-Wold-style-cast", "-Woverloaded-virtual",
+      "-Wnon-virtual-dtor"};
+  if (strict) flags.push_back("-Werror");
+  return flags;
+}
+
+std::vector<std::string> sanitizer_names() {
+  return {"address", "undefined", "thread", "leak", "memory"};
+}
+
+std::vector<std::string> sanitizer_flags(const std::string &name) {
+  return {"-O1", "-g", "-fno-omit-frame-pointer", "-fsanitize=" + name};
+}
+
+ToolInfo detect_tool(const std::string &tool, const std::string &version_arg = "--version") {
+  ToolInfo info;
+  info.name = tool;
+  CommandResult result = run_capture(tool + " " + version_arg);
+  info.available = result.exit_code == 0 && !result.output.empty();
+  if (info.available) {
+    std::istringstream lines(result.output);
+    std::getline(lines, info.version);
+    info.version = trim(info.version);
+  }
+  return info;
+}
+
+std::vector<ToolInfo> detect_analysis_tools() {
+  return {
+      detect_tool("clang-tidy"),
+      detect_tool("cppcheck"),
+      detect_tool("include-what-you-use"),
+      detect_tool("perf", "--version"),
+      detect_tool("valgrind", "--version"),
+      detect_tool("gprof", "--version"),
+      detect_tool("objdump", "--version"),
+      detect_tool("llvm-objdump", "--version"),
+      detect_tool("nm", "--version"),
+      detect_tool("size", "--version")};
+}
+
+std::string issue_fix_hint(const std::string &category, const std::string &message) {
+  if (category.find("conversion") != std::string::npos) return "Use an explicit checked cast or preserve the source type through the calculation.";
+  if (category.find("shadow") != std::string::npos) return "Rename the inner variable or reduce the variable scope.";
+  if (category.find("old-style-cast") != std::string::npos) return "Replace the C-style cast with static_cast, const_cast, or reinterpret_cast as appropriate.";
+  if (category.find("non-virtual-dtor") != std::string::npos) return "Add a virtual destructor to polymorphic base classes or prevent deletion through the base type.";
+  if (category.find("format") != std::string::npos) return "Match the format string with the exact argument types.";
+  if (category.find("undef") != std::string::npos) return "Use defined(NAME) checks or provide a default macro value.";
+  if (message.find("unused") != std::string::npos) return "Remove the value, use [[maybe_unused]], or wire it into the intended code path.";
+  return "Inspect the warning context and prefer the smallest source change that preserves behavior.";
+}
+
+std::string warning_severity(const std::string &category, const std::string &message) {
+  if (category.find("null-dereference") != std::string::npos || category.find("format") != std::string::npos) return "high";
+  if (category.find("conversion") != std::string::npos || category.find("non-virtual-dtor") != std::string::npos) return "medium";
+  if (message.find("uninitialized") != std::string::npos) return "high";
+  return "low";
+}
+
+bool warning_may_affect_correctness(const std::string &category, const std::string &message) {
+  return category.find("conversion") != std::string::npos ||
+         category.find("format") != std::string::npos ||
+         category.find("null-dereference") != std::string::npos ||
+         category.find("non-virtual-dtor") != std::string::npos ||
+         message.find("uninitialized") != std::string::npos;
+}
+
+bool warning_may_affect_performance(const std::string &category, const std::string &message) {
+  return category.find("double-promotion") != std::string::npos ||
+         category.find("overloaded-virtual") != std::string::npos ||
+         message.find("copy") != std::string::npos;
 }
 
 ProjectInfo analyze_project(const fs::path &root) {
@@ -498,12 +601,18 @@ double percentile(const std::vector<double> &sorted, double p) {
   return sorted[low] * (1.0 - weight) + sorted[high] * weight;
 }
 
-BenchmarkStats benchmark_command(const std::string &command, int runs) {
+BenchmarkStats benchmark_command(const std::string &command, int runs, int warmups) {
   if (command.empty()) throw std::runtime_error("benchmark command is required; pass --benchmark-command or --command");
   if (runs <= 0) throw std::runtime_error("--runs must be greater than zero");
+  if (warmups < 0) throw std::runtime_error("--warmups cannot be negative");
   std::vector<double> samples;
   BenchmarkStats stats;
   stats.runs = runs;
+  stats.warmups = warmups;
+  for (int i = 0; i < warmups; ++i) {
+    int rc = run_passthrough(command);
+    if (rc != 0) ++stats.failures;
+  }
   for (int i = 0; i < runs; ++i) {
     const auto start = std::chrono::steady_clock::now();
     int rc = run_passthrough(command);
@@ -516,7 +625,12 @@ BenchmarkStats benchmark_command(const std::string &command, int runs) {
   stats.min_ms = samples.front();
   stats.max_ms = samples.back();
   stats.mean_ms = std::accumulate(samples.begin(), samples.end(), 0.0) / static_cast<double>(samples.size());
+  double variance = 0.0;
+  for (double sample : samples) variance += (sample - stats.mean_ms) * (sample - stats.mean_ms);
+  stats.stddev_ms = std::sqrt(variance / static_cast<double>(samples.size()));
   stats.p50_ms = percentile(samples, 50);
+  stats.median_ms = stats.p50_ms;
+  stats.p90_ms = percentile(samples, 90);
   stats.p95_ms = percentile(samples, 95);
   stats.p99_ms = percentile(samples, 99);
   stats.p999_ms = percentile(samples, 99.9);
@@ -531,19 +645,25 @@ void write_benchmark_json(const fs::path &path, const std::string &name, const B
   out << "{\n";
   out << "  \"name\": \"" << json_escape(name) << "\",\n";
   out << "  \"runs\": " << stats.runs << ",\n";
+  out << "  \"warmups\": " << stats.warmups << ",\n";
   out << "  \"failures\": " << stats.failures << ",\n";
   out << "  \"latency_ms\": {\"min\": " << stats.min_ms << ", \"mean\": " << stats.mean_ms
-      << ", \"p50\": " << stats.p50_ms << ", \"p95\": " << stats.p95_ms
+      << ", \"median\": " << stats.median_ms << ", \"stddev\": " << stats.stddev_ms
+      << ", \"p50\": " << stats.p50_ms << ", \"p90\": " << stats.p90_ms << ", \"p95\": " << stats.p95_ms
       << ", \"p99\": " << stats.p99_ms << ", \"p99_9\": " << stats.p999_ms
       << ", \"max\": " << stats.max_ms << "},\n";
-  out << "  \"throughput_per_sec\": " << stats.throughput_per_sec << "\n";
+  out << "  \"throughput_per_sec\": " << stats.throughput_per_sec << ",\n";
+  out << "  \"system_metrics\": {\"memory_usage\": null, \"allocation_count\": null, \"cpu_utilization\": null, \"context_switches\": null, \"page_faults\": null},\n";
+  out << "  \"environment\": {\"fixed_seed\": null, \"input_data\": null, \"sanitizer_build\": false}\n";
   out << "}\n";
 }
 
 void print_benchmark(const std::string &name, const BenchmarkStats &stats) {
   std::cout << std::fixed << std::setprecision(3);
   std::cout << name << ": runs=" << stats.runs << " failures=" << stats.failures
-            << " mean_ms=" << stats.mean_ms << " p50=" << stats.p50_ms
+            << " warmups=" << stats.warmups
+            << " mean_ms=" << stats.mean_ms << " stddev=" << stats.stddev_ms
+            << " p50=" << stats.p50_ms << " p90=" << stats.p90_ms
             << " p95=" << stats.p95_ms << " p99=" << stats.p99_ms
             << " p99.9=" << stats.p999_ms
             << " throughput/s=" << stats.throughput_per_sec << "\n";
@@ -594,6 +714,244 @@ std::vector<BuildConfig> filter_goal(const std::vector<BuildConfig> &configs, co
   return out;
 }
 
+std::string join_flags(const std::vector<std::string> &flags) {
+  std::string out;
+  for (const auto &flag : flags) out += flag + " ";
+  return out;
+}
+
+std::vector<WarningIssue> parse_warning_output(const std::string &output) {
+  std::vector<WarningIssue> issues;
+  std::regex warning_re(R"(([^:\n]+):([0-9]+):[0-9]+:\s+(warning|error):\s+(.+?)(?:\s+\[(-W[^\]]+)\])?\s*$)");
+  std::istringstream stream(output);
+  std::string line;
+  while (std::getline(stream, line)) {
+    std::smatch match;
+    if (!std::regex_search(line, match, warning_re)) continue;
+    WarningIssue issue;
+    issue.file = match[1].str();
+    issue.line = std::stoi(match[2].str());
+    issue.message = match[4].str();
+    issue.category = match[5].matched ? match[5].str() : "compiler-warning";
+    issue.severity = warning_severity(issue.category, issue.message);
+    issue.possible_fix = issue_fix_hint(issue.category, issue.message);
+    issue.correctness = warning_may_affect_correctness(issue.category, issue.message);
+    issue.performance = warning_may_affect_performance(issue.category, issue.message);
+    issues.push_back(issue);
+  }
+  return issues;
+}
+
+void write_warnings_json(const Options &options, const std::vector<WarningIssue> &issues, const std::map<std::string, int> &categories) {
+  fs::create_directories(result_dir(options));
+  std::ofstream out(result_dir(options) / "warnings.json");
+  out << "{\n";
+  out << "  \"warning_count\": " << issues.size() << ",\n";
+  out << "  \"categories\": {";
+  size_t category_index = 0;
+  for (const auto &entry : categories) {
+    out << (category_index++ ? ", " : "") << "\"" << json_escape(entry.first) << "\": " << entry.second;
+  }
+  out << "},\n";
+  out << "  \"warnings\": [\n";
+  for (size_t i = 0; i < issues.size(); ++i) {
+    const auto &issue = issues[i];
+    out << "    {\"file\": \"" << json_escape(issue.file.string()) << "\", \"line\": " << issue.line
+        << ", \"category\": \"" << json_escape(issue.category) << "\", \"severity\": \"" << issue.severity
+        << "\", \"message\": \"" << json_escape(issue.message) << "\", \"possible_fix\": \"" << json_escape(issue.possible_fix)
+        << "\", \"may_affect_correctness\": " << (issue.correctness ? "true" : "false")
+        << ", \"may_affect_performance\": " << (issue.performance ? "true" : "false") << "}";
+    if (i + 1 < issues.size()) out << ",";
+    out << "\n";
+  }
+  out << "  ]\n";
+  out << "}\n";
+}
+
+int command_warnings(const Options &options) {
+  ProjectInfo info = analyze_project(options.project);
+  auto compilers = detect_compilers();
+  auto compiler = find_compiler(compilers, options.positional.empty() ? "gcc" : options.positional[0]);
+  if (!compiler) {
+    std::cerr << "no supported compiler found for warning analysis\n";
+    return 2;
+  }
+
+  const auto flags = warning_flags(options.strict);
+  std::vector<WarningIssue> issues;
+  for (const auto &source : info.sources) {
+    std::string driver = source.extension() == ".c" ? compiler->c : compiler->cxx;
+    std::string command = driver + " -fsyntax-only " + join_flags(flags) + shell_quote(source.string());
+    CommandResult result = run_capture(command);
+    auto parsed = parse_warning_output(result.output);
+    issues.insert(issues.end(), parsed.begin(), parsed.end());
+    if (options.verbose && !result.output.empty()) std::cout << result.output << "\n";
+  }
+
+  std::map<std::string, int> categories;
+  for (const auto &issue : issues) ++categories[issue.category];
+  std::cout << "Warnings: " << issues.size() << "\n";
+  for (const auto &entry : categories) std::cout << "  " << entry.first << ": " << entry.second << "\n";
+  write_warnings_json(options, issues, categories);
+  std::cout << "Wrote " << (result_dir(options) / "warnings.json") << "\n";
+  return options.strict && !issues.empty() ? 1 : 0;
+}
+
+std::vector<std::string> sanitizer_findings(const std::string &output) {
+  std::vector<std::string> findings;
+  const std::vector<std::pair<std::string, std::string>> patterns = {
+      {"invalid read", "invalid reads"}, {"invalid write", "invalid writes"},
+      {"heap-use-after-free", "use-after-free"}, {"double-free", "double deletion"},
+      {"buffer-overflow", "buffer overflow"}, {"undefined", "integer or language undefined behavior"},
+      {"shift", "invalid shifts"}, {"data race", "data races"}, {"leak", "memory leaks"},
+      {"stack", "stack traces or stack source locations"}};
+  std::string lower = output;
+  std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  for (const auto &pattern : patterns) {
+    if (lower.find(pattern.first) != std::string::npos) findings.push_back(pattern.second);
+  }
+  return findings;
+}
+
+void write_sanitizer_json(const Options &options, const std::string &name, int build_rc, int test_rc, const std::string &output) {
+  fs::create_directories(result_dir(options));
+  auto findings = sanitizer_findings(output);
+  std::ofstream out(result_dir(options) / ("sanitize-" + name + ".json"));
+  out << "{\n";
+  out << "  \"sanitizer\": \"" << json_escape(name) << "\",\n";
+  out << "  \"build_exit_code\": " << build_rc << ",\n";
+  out << "  \"test_exit_code\": " << test_rc << ",\n";
+  out << "  \"findings\": [";
+  for (size_t i = 0; i < findings.size(); ++i) out << (i ? ", " : "") << "\"" << json_escape(findings[i]) << "\"";
+  out << "],\n";
+  out << "  \"stack_traces_available\": " << (output.find("#0") != std::string::npos ? "true" : "false") << ",\n";
+  out << "  \"source_locations_available\": " << (std::regex_search(output, std::regex(R"(:[0-9]+:[0-9]+)")) ? "true" : "false") << ",\n";
+  out << "  \"raw_output_excerpt\": \"" << json_escape(output.substr(0, 4000)) << "\"\n";
+  out << "}\n";
+}
+
+bool sanitizer_supported(const Compiler &compiler, const std::string &name) {
+  fs::path temp = fs::temp_directory_path() / ("turbobuild_sanitizer_probe_" + name + ".cpp");
+  fs::path exe = fs::temp_directory_path() / ("turbobuild_sanitizer_probe_" + name);
+  {
+    std::ofstream probe(temp);
+    probe << "int main(){return 0;}\n";
+  }
+  CommandResult result = run_capture(compiler.cxx + " -O1 -g -fno-omit-frame-pointer -fsanitize=" + name + " " +
+                                     shell_quote(temp.string()) + " -o " + shell_quote(exe.string()));
+  std::error_code ignored;
+  fs::remove(temp, ignored);
+  fs::remove(exe, ignored);
+#ifdef _WIN32
+  fs::remove(exe.string() + ".exe", ignored);
+#endif
+  return result.exit_code == 0;
+}
+
+int command_sanitize(const Options &options) {
+  ProjectInfo info = analyze_project(options.project);
+  auto compilers = detect_compilers();
+  auto compiler = find_compiler(compilers, options.positional.empty() ? "gcc" : options.positional[0]);
+  if (!compiler) {
+    std::cerr << "no supported compiler found for sanitizer builds\n";
+    return 2;
+  }
+
+  int failures = 0;
+  for (const auto &name : sanitizer_names()) {
+    if (!sanitizer_supported(*compiler, name)) {
+      std::cout << "Sanitizer skipped, unsupported by " << compiler->id << ": " << name << "\n";
+      write_sanitizer_json(options, name, 0, 0, "skipped: sanitizer unsupported by selected compiler");
+      continue;
+    }
+    BuildConfig config{compiler->id + "-" + name + "-san", compiler->id, sanitizer_flags(name), false, ""};
+    std::cout << "Sanitizer build: " << name << "\n";
+    int build_rc = configure_and_build(options, info, compilers, config);
+    int test_rc = 0;
+    std::string output;
+    if (build_rc == 0) {
+      fs::path build_dir = builds_dir(options) / config.name;
+      std::string test_command;
+      if (info.has_cmake) test_command = "ctest --test-dir " + shell_quote(build_dir.string()) + " --output-on-failure";
+      else if (info.has_make) test_command = "make -C " + shell_quote(options.project.string()) + " test";
+      else if (!options.benchmark_command.empty()) test_command = options.benchmark_command;
+      if (!test_command.empty()) {
+        CommandResult test = run_capture(test_command);
+        test_rc = test.exit_code;
+        output = test.output;
+        if (options.verbose && !output.empty()) std::cout << output << "\n";
+      } else {
+        output = "No test suite or --command supplied for sanitizer execution.";
+      }
+    }
+    if (build_rc != 0 || test_rc != 0) ++failures;
+    write_sanitizer_json(options, name, build_rc, test_rc, output);
+  }
+  std::cout << "Wrote sanitizer reports to " << result_dir(options) << "\n";
+  return failures == 0 ? 0 : 1;
+}
+
+std::vector<std::string> static_heuristics_for_file(const fs::path &path) {
+  std::vector<std::string> findings;
+  std::ifstream in(path);
+  std::string line;
+  int number = 0;
+  while (std::getline(in, line)) {
+    ++number;
+    auto add = [&](const std::string &message) {
+      findings.push_back(path.string() + ":" + std::to_string(number) + ": " + message);
+    };
+    if (line.find("std::endl") != std::string::npos) add("I/O: std::endl flushes; prefer '\\n' unless a flush is required.");
+    if (line.find("new ") != std::string::npos || line.find("delete ") != std::string::npos) add("Ownership: raw new/delete may indicate manual lifetime management.");
+    if (line.find("shrink_to_fit") != std::string::npos) add("Containers: shrink_to_fit in hot paths can cause avoidable reallocations.");
+    if (line.find("std::list") != std::string::npos) add("Containers: std::list has pointer chasing; consider vector/deque when insertion pattern allows.");
+    if (line.find("push_back") != std::string::npos) add("Containers: repeated push_back may need reserve; do not switch to emplace_back unless it removes a real temporary.");
+    if (line.find("+=") != std::string::npos && line.find("std::string") != std::string::npos) add("Strings: repeated concatenation may benefit from preallocated output buffers.");
+    if (line.find("dynamic_cast") != std::string::npos || line.find("reinterpret_cast") != std::string::npos) add("Casts: inspect unsafe or runtime casts.");
+    if (line.find("virtual ") != std::string::npos) add("Dispatch: virtual calls may matter in hot paths; measure before changing.");
+    if (line.find("std::mutex") != std::string::npos || line.find("lock_guard") != std::string::npos) add("Threads: inspect critical-section size and contention.");
+  }
+  return findings;
+}
+
+int command_static_analysis(const Options &options) {
+  ProjectInfo info = analyze_project(options.project);
+  auto tools = detect_analysis_tools();
+  fs::create_directories(result_dir(options));
+
+  std::vector<std::string> findings;
+  for (const auto &source : info.sources) {
+    auto local = static_heuristics_for_file(source);
+    findings.insert(findings.end(), local.begin(), local.end());
+  }
+
+  std::ofstream out(result_dir(options) / "static-analysis.json");
+  out << "{\n";
+  out << "  \"tools\": [\n";
+  for (size_t i = 0; i < tools.size(); ++i) {
+    out << "    {\"name\": \"" << tools[i].name << "\", \"available\": " << (tools[i].available ? "true" : "false")
+        << ", \"version\": \"" << json_escape(tools[i].version) << "\"}";
+    if (i + 1 < tools.size()) out << ",";
+    out << "\n";
+  }
+  out << "  ],\n";
+  out << "  \"checks\": [\"unnecessary copies\", \"large pass-by-value\", \"missing const references\", \"unsafe casts\", \"raw owning pointers\", \"manual new/delete\", \"missing noexcept\", \"unnecessary allocations\", \"container growth\", \"signed/unsigned conversions\", \"dead code\", \"uninitialized data\", \"cache locality\", \"branch behavior\", \"loop vectorization\", \"SIMD compatibility\", \"multithreading\", \"I/O hot paths\"],\n";
+  out << "  \"heuristic_findings\": [\n";
+  for (size_t i = 0; i < findings.size(); ++i) {
+    out << "    \"" << json_escape(findings[i]) << "\"";
+    if (i + 1 < findings.size()) out << ",";
+    out << "\n";
+  }
+  out << "  ]\n";
+  out << "}\n";
+
+  std::cout << "Static analysis tools:\n";
+  for (const auto &tool : tools) std::cout << "  " << tool.name << ": " << (tool.available ? tool.version : "not found") << "\n";
+  std::cout << "Heuristic findings: " << findings.size() << "\n";
+  std::cout << "Wrote " << (result_dir(options) / "static-analysis.json") << "\n";
+  return 0;
+}
+
 int command_analyze(const Options &options) {
   ProjectInfo info = analyze_project(options.project);
   auto compilers = detect_compilers();
@@ -628,7 +986,7 @@ int command_test(const Options &options) {
 }
 
 int command_benchmark(const Options &options) {
-  BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs);
+  BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
   print_benchmark("benchmark", stats);
   write_benchmark_json(result_dir(options) / "benchmark.json", "benchmark", stats);
   return stats.failures == 0 ? 0 : 1;
@@ -654,7 +1012,7 @@ int command_optimize(const Options &options) {
       std::cout << "Built " << config.name << "; no benchmark command supplied, so no improvement is claimed.\n";
       continue;
     }
-    BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs);
+    BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
     print_benchmark(config.name, stats);
     write_benchmark_json(result_dir(options) / (config.name + ".json"), config.name, stats);
     measured.push_back({config, stats});
@@ -696,7 +1054,7 @@ int command_compare(const Options &options) {
     int rc = configure_and_build(options, info, compilers, config);
     if (rc != 0) continue;
     if (!options.benchmark_command.empty()) {
-      auto stats = benchmark_command(options.benchmark_command, options.runs);
+      auto stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
       print_benchmark(config.name, stats);
       write_benchmark_json(result_dir(options) / (config.name + ".json"), config.name, stats);
     }
@@ -706,9 +1064,25 @@ int command_compare(const Options &options) {
 }
 
 int command_profile(const Options &options) {
-  std::cout << "Profile level one: run benchmark with --runs and inspect p50/p95/p99/p99.9 latency and throughput.\n";
-  std::cout << "CPU, memory, bandwidth, and thread sampling hooks are reserved for the next native profiler layer.\n";
+  auto tools = detect_analysis_tools();
+  fs::create_directories(result_dir(options));
+  std::ofstream out(result_dir(options) / "profile-tools.json");
+  out << "{\n";
+  out << "  \"tools\": [\n";
+  for (size_t i = 0; i < tools.size(); ++i) {
+    out << "    {\"name\": \"" << tools[i].name << "\", \"available\": " << (tools[i].available ? "true" : "false")
+        << ", \"version\": \"" << json_escape(tools[i].version) << "\"}";
+    if (i + 1 < tools.size()) out << ",";
+    out << "\n";
+  }
+  out << "  ],\n";
+  out << "  \"perf_events\": [\"task-clock\", \"cycles\", \"instructions\", \"IPC\", \"branches\", \"branch misses\", \"cache references\", \"cache misses\", \"page faults\", \"context switches\"],\n";
+  out << "  \"fallback_policy\": \"Use available software counters when hardware PMUs are unavailable, including WSL and virtual machines.\"\n";
+  out << "}\n";
+  std::cout << "Profiling tools:\n";
+  for (const auto &tool : tools) std::cout << "  " << tool.name << ": " << (tool.available ? tool.version : "not found") << "\n";
   if (!options.benchmark_command.empty()) return command_benchmark(options);
+  std::cout << "Wrote " << (result_dir(options) / "profile-tools.json") << "\n";
   return 0;
 }
 
@@ -741,8 +1115,11 @@ void usage() {
       << "  analyze [--project PATH]\n"
       << "  build [--project PATH] [--config gcc-o2]\n"
       << "  test [--project PATH] [--config gcc-o2]\n"
-      << "  benchmark --command CMD [--runs N]\n"
-      << "  profile [--command CMD] [--runs N]\n"
+      << "  warnings [--project PATH] [gcc|clang] [--strict]\n"
+      << "  sanitize [--project PATH] [gcc|clang] [--command CMD]\n"
+      << "  static-analysis [--project PATH]\n"
+      << "  benchmark --command CMD [--runs N] [--warmups N]\n"
+      << "  profile [--command CMD] [--runs N] [--warmups N]\n"
       << "  optimize --goal speed|size|balanced [--benchmark-command CMD] [--runs N]\n"
       << "  compare gcc clang [--benchmark-command CMD] [--runs N]\n"
       << "  report [--format json|html]\n"
@@ -761,6 +1138,9 @@ int main(int argc, char **argv) {
     if (options.command == "analyze") return command_analyze(options);
     if (options.command == "build") return command_build(options);
     if (options.command == "test") return command_test(options);
+    if (options.command == "warnings") return command_warnings(options);
+    if (options.command == "sanitize") return command_sanitize(options);
+    if (options.command == "static-analysis") return command_static_analysis(options);
     if (options.command == "benchmark") return command_benchmark(options);
     if (options.command == "profile") return command_profile(options);
     if (options.command == "optimize") return command_optimize(options);
