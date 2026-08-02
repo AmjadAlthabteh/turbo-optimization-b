@@ -337,6 +337,7 @@ std::vector<BuildConfig> candidate_configs(const Options &options, const std::ve
 
 void write_analysis_json(const Options &options, const ProjectInfo &info, const std::vector<Compiler> &compilers) {
   fs::create_directories(result_dir(options));
+  const auto configs = candidate_configs(options, compilers);
   std::ofstream out(result_dir(options) / "analysis.json");
   out << "{\n";
   out << "  \"root\": \"" << json_escape(info.root.string()) << "\",\n";
@@ -361,6 +362,21 @@ void write_analysis_json(const Options &options, const ProjectInfo &info, const 
     if (i + 1 < compilers.size()) out << ",";
     out << "\n";
   }
+  out << "  ],\n";
+  out << "  \"candidate_configs\": [\n";
+  for (size_t i = 0; i < configs.size(); ++i) {
+    const auto &config = configs[i];
+    out << "    {\"name\": \"" << json_escape(config.name) << "\", \"compiler\": \"" << config.compiler_id
+        << "\", \"unsafe\": " << (config.unsafe ? "true" : "false") << ", \"flags\": [";
+    for (size_t j = 0; j < config.flags.size(); ++j) {
+      out << (j ? ", " : "") << "\"" << json_escape(config.flags[j]) << "\"";
+    }
+    out << "]";
+    if (!config.safety_note.empty()) out << ", \"safety_note\": \"" << json_escape(config.safety_note) << "\"";
+    out << "}";
+    if (i + 1 < configs.size()) out << ",";
+    out << "\n";
+  }
   out << "  ]\n";
   out << "}\n";
 }
@@ -375,6 +391,12 @@ void print_analysis(const ProjectInfo &info, const std::vector<Compiler> &compil
   std::cout << "Compilers:\n";
   for (const auto &compiler : compilers) {
     std::cout << "  " << compiler.id << ": " << (compiler.available ? compiler.version : "not found") << "\n";
+  }
+  const Options defaults;
+  const auto configs = candidate_configs(defaults, compilers);
+  std::cout << "Supported safe configs:\n";
+  for (const auto &config : configs) {
+    if (!config.unsafe) std::cout << "  " << config.name << "\n";
   }
 }
 
