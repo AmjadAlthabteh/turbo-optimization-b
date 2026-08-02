@@ -405,6 +405,34 @@ std::optional<Compiler> find_compiler(const std::vector<Compiler> &compilers, co
   return std::nullopt;
 }
 
+uintmax_t directory_file_size(const fs::path &dir) {
+  uintmax_t total = 0;
+  std::error_code ignored;
+  if (!fs::exists(dir, ignored)) return 0;
+  for (const auto &entry : fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied, ignored)) {
+    if (!entry.is_regular_file()) continue;
+    total += entry.file_size(ignored);
+  }
+  return total;
+}
+
+void write_build_json(const Options &options, const BuildConfig &config, int exit_code, const fs::path &build_dir) {
+  fs::create_directories(result_dir(options));
+  std::ofstream out(result_dir(options) / ("build-" + config.name + ".json"));
+  out << "{\n";
+  out << "  \"config\": \"" << json_escape(config.name) << "\",\n";
+  out << "  \"compiler\": \"" << json_escape(config.compiler_id) << "\",\n";
+  out << "  \"exit_code\": " << exit_code << ",\n";
+  out << "  \"build_dir\": \"" << json_escape(build_dir.string()) << "\",\n";
+  out << "  \"artifact_bytes\": " << directory_file_size(build_dir) << ",\n";
+  out << "  \"flags\": [";
+  for (size_t i = 0; i < config.flags.size(); ++i) {
+    out << (i ? ", " : "") << "\"" << json_escape(config.flags[i]) << "\"";
+  }
+  out << "]\n";
+  out << "}\n";
+}
+
 int configure_and_build(const Options &options, const ProjectInfo &info, const std::vector<Compiler> &compilers, const BuildConfig &config) {
   auto compiler = find_compiler(compilers, config.compiler_id);
   if (!compiler) {
@@ -426,8 +454,9 @@ int configure_and_build(const Options &options, const ProjectInfo &info, const s
       " -DCMAKE_C_FLAGS=" + shell_quote(flags) +
       " -DCMAKE_CXX_FLAGS=" + shell_quote(flags);
     int rc = run_passthrough(configure);
-    if (rc != 0) return rc;
-    return run_passthrough("cmake --build " + shell_quote(build_dir.string()) + " --config Release");
+    if (rc == 0) rc = run_passthrough("cmake --build " + shell_quote(build_dir.string()) + " --config Release");
+    write_build_json(options, config, rc, build_dir);
+    return rc;
   }
 
   if (info.has_make) {
@@ -436,7 +465,9 @@ int configure_and_build(const Options &options, const ProjectInfo &info, const s
       " CXX=" + shell_quote(compiler->cxx) +
       " CFLAGS=" + shell_quote(flags) +
       " CXXFLAGS=" + shell_quote(flags);
-    return run_passthrough(make);
+    int rc = run_passthrough(make);
+    write_build_json(options, config, rc, build_dir);
+    return rc;
   }
 
   if (info.sources.empty()) {
@@ -452,7 +483,9 @@ int configure_and_build(const Options &options, const ProjectInfo &info, const s
   for (const auto &flag : config.flags) command += flag + " ";
   for (const auto &src : info.sources) command += shell_quote(src.string()) + " ";
   command += "-o " + shell_quote(output.string());
-  return run_passthrough(command);
+  int rc = run_passthrough(command);
+  write_build_json(options, config, rc, build_dir);
+  return rc;
 }
 
 double percentile(const std::vector<double> &sorted, double p) {
