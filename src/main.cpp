@@ -549,6 +549,34 @@ void print_benchmark(const std::string &name, const BenchmarkStats &stats) {
             << " throughput/s=" << stats.throughput_per_sec << "\n";
 }
 
+void write_optimize_summary(const Options &options,
+                            const BuildConfig &baseline_config,
+                            const BenchmarkStats &baseline_stats,
+                            const BuildConfig &best_config,
+                            const BenchmarkStats &best_stats) {
+  fs::create_directories(result_dir(options));
+  const double improvement = baseline_stats.mean_ms > 0
+      ? ((baseline_stats.mean_ms - best_stats.mean_ms) / baseline_stats.mean_ms) * 100.0
+      : 0.0;
+  std::ofstream out(result_dir(options) / "optimize-summary.json");
+  out << std::fixed << std::setprecision(3);
+  out << "{\n";
+  out << "  \"goal\": \"" << json_escape(options.goal) << "\",\n";
+  out << "  \"baseline\": {\"config\": \"" << json_escape(baseline_config.name)
+      << "\", \"mean_ms\": " << baseline_stats.mean_ms
+      << ", \"p95_ms\": " << baseline_stats.p95_ms
+      << ", \"p99_ms\": " << baseline_stats.p99_ms
+      << ", \"failures\": " << baseline_stats.failures << "},\n";
+  out << "  \"best\": {\"config\": \"" << json_escape(best_config.name)
+      << "\", \"mean_ms\": " << best_stats.mean_ms
+      << ", \"p95_ms\": " << best_stats.p95_ms
+      << ", \"p99_ms\": " << best_stats.p99_ms
+      << ", \"failures\": " << best_stats.failures << "},\n";
+  out << "  \"measured_improvement_percent\": " << improvement << ",\n";
+  out << "  \"improvement_claimed\": " << ((best_config.name != baseline_config.name && improvement > 0.0) ? "true" : "false") << "\n";
+  out << "}\n";
+}
+
 std::optional<BuildConfig> select_config(const std::vector<BuildConfig> &configs, const std::string &name) {
   for (const auto &config : configs) if (config.name == name) return config;
   return std::nullopt;
@@ -642,6 +670,7 @@ int command_optimize(const Options &options) {
     return a.second.mean_ms < b.second.mean_ms;
   });
   const auto &baseline = measured.front();
+  write_optimize_summary(options, baseline.first, baseline.second, best->first, best->second);
   const double improvement = baseline.second.mean_ms > 0 ? ((baseline.second.mean_ms - best->second.mean_ms) / baseline.second.mean_ms) * 100.0 : 0.0;
   std::cout << std::fixed << std::setprecision(2);
   std::cout << "Best measured config: " << best->first.name << " mean_ms=" << best->second.mean_ms << "\n";
