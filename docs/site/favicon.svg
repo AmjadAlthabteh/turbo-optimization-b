@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="16" fill="#030507"/>
+  <text x="32" y="43"
+        fill="#f1f5f9"
+        font-family="Segoe Script, Brush Script MT, cursive"
+        font-size="40"
+        font-weight="700"
+        text-anchor="middle">T</text>
+  <path d="M14 51h36" stroke="#22c7a9" stroke-width="3" stroke-linecap="round"/>
+</svg>
