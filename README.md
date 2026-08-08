@@ -56,6 +56,9 @@ The executable entry point is intentionally small:
 - `src/turbobuild.cpp` contains the current implementation behind that boundary.
 
 See `docs/architecture.md` for the command flow and maintainer notes.
+That document also includes the deeper target `.h/.cpp` module split for CLI,
+process execution, project discovery, compiler probing, builds, benchmarks,
+diagnostics, reports, and command orchestration.
 
 ## Project Readiness And CI
 
