@@ -10,9 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
@@ -20,22 +18,35 @@ concurrency:
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/site
+          fetch-depth: 0
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish docs/site to gh-pages branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/turbobuild-site
+          cp -R docs/site/. /tmp/turbobuild-site/
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages
+            git switch gh-pages
+          else
+            git switch --orphan gh-pages
+          fi
+
+          git rm -rf . >/dev/null 2>&1 || true
+          cp -R /tmp/turbobuild-site/. .
+          touch .nojekyll
+
+          git add .
+          git commit -m "Deploy site from ${GITHUB_SHA}" || exit 0
+          git push origin gh-pages
