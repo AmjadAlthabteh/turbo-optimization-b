@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TurboBuild | Waitlist Request Saved</title>
+    <meta
+      name="description"
+      content="TurboBuild waitlist confirmation for measured C and C++ optimization workflows."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="confirmation-page">
+    <main class="confirmation-shell">
+      <a class="brand" href="index.html" aria-label="TurboBuild home">
+        <span class="brand-mark">T</span>
+        <span>TurboBuild</span>
+      </a>
+
+      <section class="confirmation-panel">
+        <p class="eyebrow">Waitlist saved</p>
+        <h1>You're on the TurboBuild early access list.</h1>
+        <p>
+          The request was saved in this browser preview. In the hosted version,
+          this page would confirm the project type, optimization goal, and next
+          steps for uploading a C++ project.
+        </p>
+
+        <div class="confirmation-details" id="waitlistDetails">
+          <div><strong>Email</strong><span>Saved locally</span></div>
+          <div><strong>Project type</strong><span>Ready for review</span></div>
+          <div><strong>Goal</strong><span>Measured optimization</span></div>
+        </div>
+
+        <div class="hero-actions">
+          <a class="button button-dark" href="index.html#upload">Preview upload</a>
+          <a class="button button-light" href="index.html#under-hood">See under the hood</a>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const entries = JSON.parse(localStorage.getItem("turboWaitlist") || "[]");
+      const latest = entries[entries.length - 1];
+      const details = document.querySelector("#waitlistDetails");
+
+      if (latest && details) {
+        details.replaceChildren();
+
+        [
+          ["Email", latest.email],
+          ["Project type", latest.projectType],
+          ["Goal", latest.goal],
+        ].forEach(([label, value]) => {
+          const item = document.createElement("div");
+          const strong = document.createElement("strong");
+          const span = document.createElement("span");
+
+          strong.textContent = label;
+          span.textContent = value;
+          item.append(strong, span);
+          details.append(item);
+        });
+      }
+    </script>
+  </body>
+</html>

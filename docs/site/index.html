@@ -11,6 +11,38 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div class="welcome-modal" id="welcomeModal" aria-hidden="true">
+      <div class="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+        <p class="eyebrow">First visit setup</p>
+        <h2 id="welcomeTitle">What are you trying to optimize?</h2>
+        <p>
+          Pick a focus and a color. The page will tune the examples around what
+          you care about most.
+        </p>
+        <div class="welcome-grid">
+          <label>
+            Focus
+            <select id="visitorFocus">
+              <option value="speed">Speed and latency</option>
+              <option value="size">Binary size</option>
+              <option value="safety">Warnings and correctness</option>
+              <option value="ci">CI reports</option>
+            </select>
+          </label>
+          <label>
+            Accent
+            <select id="visitorColor">
+              <option value="green">Terminal green</option>
+              <option value="amber">Build amber</option>
+              <option value="blue">Profiler blue</option>
+              <option value="rose">Warning rose</option>
+            </select>
+          </label>
+        </div>
+        <button class="button button-dark" id="saveWelcome" type="button">Open TurboBuild</button>
+      </div>
+    </div>
+
     <header class="topbar">
       <a class="brand" href="#home" aria-label="TurboBuild home">
         <span class="brand-mark">T</span>
@@ -18,6 +50,7 @@
       </a>
       <nav class="nav" aria-label="Primary navigation">
         <a href="#platform">Platform</a>
+        <a href="#under-hood">Under hood</a>
         <a href="#solves">Use cases</a>
         <a href="#upload">Upload</a>
         <a href="#commands">Commands</a>
@@ -66,6 +99,16 @@
               <small>-18.4% vs baseline</small>
             </div>
             <div>
+              <span>p99 latency</span>
+              <strong>67.1 ms</strong>
+              <small>100 measured runs</small>
+            </div>
+            <div>
+              <span>Throughput</span>
+              <strong>23.3/s</strong>
+              <small>+22.5% vs O0</small>
+            </div>
+            <div>
               <span>Binary size</span>
               <strong>1.7 MB</strong>
               <small>-9.1% with LTO</small>
@@ -94,6 +137,14 @@
         <span>Sanitize</span>
         <span>Profile</span>
         <span>Report</span>
+      </section>
+
+      <section class="metric-ribbon" aria-label="Example measured output">
+        <div><strong>8</strong><span>safe configs tested</span></div>
+        <div><strong>100</strong><span>benchmark samples</span></div>
+        <div><strong>0</strong><span>unsafe flags by default</span></div>
+        <div><strong>18.4%</strong><span>example mean speedup</span></div>
+        <div><strong>19.0%</strong><span>example size reduction</span></div>
       </section>
 
       <section id="solves" class="section solve-section">
@@ -185,6 +236,108 @@
               passed, and whether an improvement was actually measured.
             </p>
           </article>
+        </div>
+      </section>
+
+      <section id="under-hood" class="section ide-section">
+        <div class="section-heading">
+          <p class="eyebrow">Under the hood</p>
+          <h2>What happens when you run TurboBuild.</h2>
+          <p>
+            The CLI does normal build engineering work: inspect the project,
+            probe compilers, run safe configs, measure the command, and write
+            files your team can review.
+          </p>
+        </div>
+
+        <div class="ide-grid">
+          <div class="ide-window">
+            <div class="ide-top">
+              <span></span><span></span><span></span>
+              <strong>src/order_book.cpp</strong>
+            </div>
+            <div class="ide-body">
+              <aside>
+                <p>project</p>
+                <span>src/main.cpp</span>
+                <span class="active-file">src/order_book.cpp</span>
+                <span>src/benchmark.cpp</span>
+                <span>CMakeLists.txt</span>
+                <span>.turbobuild/results</span>
+              </aside>
+              <pre><code><span class="code-type">std::vector</span>&lt;<span class="code-type">Order</span>&gt; orders;
+<span class="code-keyword">for</span> (<span class="code-keyword">const auto</span>&amp; event : feed) {
+  orders.<span class="code-call">push_back</span>(<span class="code-call">parse_order</span>(event));
+}
+
+<span class="code-comment">// TurboBuild finding:</span>
+<span class="code-comment">// repeated vector growth in measured path</span>
+orders.<span class="code-call">reserve</span>(feed.<span class="code-call">size</span>());</code></pre>
+            </div>
+          </div>
+
+          <div class="pipeline-panel">
+            <div>
+              <span>01</span>
+              <h3>Scan</h3>
+              <p>Find CMake, source files, headers, tests, benchmarks, generated code, and build outputs.</p>
+            </div>
+            <div>
+              <span>02</span>
+              <h3>Probe</h3>
+              <p>Check GCC/Clang availability and supported flags like <code>-O2</code>, <code>-O3</code>, <code>-Os</code>, <code>-Oz</code>, and LTO.</p>
+            </div>
+            <div>
+              <span>03</span>
+              <h3>Measure</h3>
+              <p>Run warmups and repeated samples, then calculate mean, median, p95, p99, throughput, failures, and artifact size.</p>
+            </div>
+            <div>
+              <span>04</span>
+              <h3>Report</h3>
+              <p>Write JSON and HTML under <code>.turbobuild/results</code> so the result can be reviewed or uploaded by CI.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="sandbox-grid">
+          <div class="sandbox-card">
+            <h3>Edit the project idea</h3>
+            <textarea id="ideaInput">Low-latency C++ service with an order book hot path and repeated vector growth.</textarea>
+          </div>
+          <div class="sandbox-card">
+            <h3>Paste a code sample</h3>
+            <textarea id="codeInput">std::vector&lt;Order&gt; orders;
+for (const auto&amp; event : feed) {
+  orders.push_back(parse_order(event));
+}</textarea>
+            <button class="button button-dark" id="simulateCode" type="button">Test the sample</button>
+          </div>
+          <div class="sandbox-card sandbox-output">
+            <h3>Preview result</h3>
+            <pre><code id="sandboxOutput">Finding: repeated vector growth
+Suggested experiment: reserve container capacity
+Run: turbobuild benchmark --runs 100 --warmups 5 --command ".\app.exe"</code></pre>
+          </div>
+        </div>
+
+        <div class="report-strip">
+          <div><strong>analysis.json</strong><span>project shape, compilers, flags</span></div>
+          <div><strong>warnings.json</strong><span>severity, fix hints, source lines</span></div>
+          <div><strong>benchmark.json</strong><span>mean, p95, p99, throughput</span></div>
+          <div><strong>optimize-summary.json</strong><span>baseline vs best measured config</span></div>
+        </div>
+
+        <div class="terminal-deep-dive">
+          <div class="terminal-header">
+            <span></span><span></span><span></span>
+          </div>
+          <pre><code>$ turbobuild optimize --goal speed --runs 100 --warmups 5 --benchmark-command ".\app.exe"
+[doctor] cmake found, gcc found, clang found
+[build] gcc-o2      artifact=1.92 MB   mean=52.4 ms   p99=81.2 ms
+[build] gcc-o3      artifact=1.86 MB   mean=45.6 ms   p99=70.8 ms
+[build] gcc-o2-lto  artifact=1.70 MB   mean=42.8 ms   p99=67.1 ms
+[report] wrote .turbobuild/results/optimize-summary.json</code></pre>
         </div>
       </section>
 
