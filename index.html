@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TurboBuild | Measured C and C++ Optimization</title>
+    <meta
+      name="description"
+      content="TurboBuild analyzes, builds, tests, benchmarks, profiles, and optimizes C and C++ projects with measurement-first reports."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="welcome-modal" id="welcomeModal" aria-hidden="true">
+      <div class="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+        <p class="eyebrow">First visit setup</p>
+        <h2 id="welcomeTitle">What are you trying to optimize?</h2>
+        <p>
+          Pick a focus and a color. The page will tune the examples around what
+          you care about most.
+        </p>
+        <div class="welcome-grid">
+          <label>
+            Focus
+            <select id="visitorFocus">
+              <option value="speed">Speed and latency</option>
+              <option value="size">Binary size</option>
+              <option value="safety">Warnings and correctness</option>
+              <option value="ci">CI reports</option>
+            </select>
+          </label>
+          <label>
+            Accent
+            <select id="visitorColor">
+              <option value="green">Terminal green</option>
+              <option value="amber">Build amber</option>
+              <option value="blue">Profiler blue</option>
+              <option value="rose">Warning rose</option>
+            </select>
+          </label>
+        </div>
+        <button class="button button-dark" id="saveWelcome" type="button">Open TurboBuild</button>
+      </div>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="#home" aria-label="TurboBuild home">
+        <span class="brand-mark">T</span>
+        <span>TurboBuild</span>
+      </a>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="#platform">Platform</a>
+        <a href="#under-hood">Under hood</a>
+        <a href="#solves">Use cases</a>
+        <a href="#upload">Upload</a>
+        <a href="#commands">Commands</a>
+        <a href="#workflow">Workflow</a>
+      </nav>
+      <a class="button button-dark" href="#waitlist">Join waitlist</a>
+    </header>
+
+    <main id="home">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Measurement-first C and C++ optimization</p>
+          <h1>Find the fastest safe build for real C++ projects.</h1>
+          <p class="hero-text">
+            TurboBuild scans your C++ codebase, tests correctness, benchmarks
+            compiler flags, profiles hot paths, and shows exactly what changed.
+            It is a local CLI for teams that need proof before
+            they change release flags, rewrite hot code, or ship performance
+            claims.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-dark" href="#upload">Preview upload scan</a>
+            <a class="button button-dark" href="#workflow">See workflow</a>
+            <a class="button button-light" href="#optimizer-lab">Build a command</a>
+          </div>
+          <div class="trust-row" aria-label="Optimization safety guarantees">
+            <span>Tests before claims</span>
+            <span>Safe flags by default</span>
+            <span>HTML and JSON reports</span>
+            <span>Local command-line workflow</span>
+          </div>
+        </div>
+
+        <aside class="hero-dashboard" aria-label="TurboBuild optimization dashboard preview">
+          <div class="dashboard-top">
+            <div>
+              <span class="status-dot"></span>
+              Optimization run
+            </div>
+            <strong>gcc-o3-lto</strong>
+          </div>
+          <div class="dashboard-metrics">
+            <div>
+              <span>Mean runtime</span>
+              <strong>42.8 ms</strong>
+              <small>-18.4% vs baseline</small>
+            </div>
+            <div>
+              <span>p99 latency</span>
+              <strong>67.1 ms</strong>
+              <small>100 measured runs</small>
+            </div>
+            <div>
+              <span>Throughput</span>
+              <strong>23.3/s</strong>
+              <small>+22.5% vs O0</small>
+            </div>
+            <div>
+              <span>Binary size</span>
+              <strong>1.7 MB</strong>
+              <small>-9.1% with LTO</small>
+            </div>
+          </div>
+          <div class="chart" aria-label="Benchmark bar chart">
+            <div style="--height: 76%"><span>O0</span></div>
+            <div style="--height: 58%"><span>O1</span></div>
+            <div style="--height: 44%"><span>O2</span></div>
+            <div style="--height: 36%"><span>O3</span></div>
+            <div style="--height: 31%"><span>LTO</span></div>
+          </div>
+          <div class="finding-list">
+            <p><strong>Hot path:</strong> src/order_book.cpp:184</p>
+            <p><strong>Finding:</strong> repeated vector growth in benchmark loop</p>
+            <p><strong>Policy:</strong> Ofast and fast-math blocked until explicitly allowed</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="logos" aria-label="TurboBuild product capabilities">
+        <span>Doctor</span>
+        <span>Analyze</span>
+        <span>Build</span>
+        <span>Benchmark</span>
+        <span>Sanitize</span>
+        <span>Profile</span>
+        <span>Report</span>
+      </section>
+
+      <section class="metric-ribbon" aria-label="Example measured output">
+        <div><strong>8</strong><span>safe configs tested</span></div>
+        <div><strong>100</strong><span>benchmark samples</span></div>
+        <div><strong>0</strong><span>unsafe flags by default</span></div>
+        <div><strong>18.4%</strong><span>example mean speedup</span></div>
+        <div><strong>19.0%</strong><span>example size reduction</span></div>
+      </section>
+
+      <section id="solves" class="section solve-section">
+        <div class="section-heading">
+          <p class="eyebrow">What it solves</p>
+          <h2>Performance work that normally gets scattered across scripts and spreadsheets.</h2>
+          <p>
+            TurboBuild gives C and C++ teams one repeatable path from project
+            readiness to measured optimization reports.
+          </p>
+        </div>
+
+        <div class="solve-grid">
+          <article class="solve-card">
+            <h3>Release builds got slower</h3>
+            <p>
+              Compare compiler configs, benchmark before and after, and keep
+              the result tied to the exact flags that produced it.
+            </p>
+            <strong>Useful for backend services, engines, SDKs, and tools.</strong>
+          </article>
+          <article class="solve-card">
+            <h3>The binary is too large</h3>
+            <p>
+              Try size-focused configs like <code>-Os</code>, <code>-Oz</code>,
+              and LTO while keeping unsafe tradeoffs visible.
+            </p>
+            <strong>Useful for embedded, CLI, plugins, and shipped apps.</strong>
+          </article>
+          <article class="solve-card">
+            <h3>Warnings keep piling up</h3>
+            <p>
+              Run strict warnings, categorize risks, and write JSON output that
+              can be reviewed in CI or attached to tickets.
+            </p>
+            <strong>Useful for code cleanup and production readiness.</strong>
+          </article>
+          <article class="solve-card">
+            <h3>Optimization broke behavior</h3>
+            <p>
+              Keep semantic-changing flags like <code>-Ofast</code> and
+              <code>-ffast-math</code> behind explicit opt-ins.
+            </p>
+            <strong>Useful for finance, simulation, scientific, and safety work.</strong>
+          </article>
+        </div>
+      </section>
+
+      <section id="platform" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Platform</p>
+          <h2>One command layer for C++ build optimization.</h2>
+          <p>
+            TurboBuild keeps optimization grounded in correctness checks,
+            repeatable builds, and before-and-after measurements.
+          </p>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="icon">01</span>
+            <h3>Project intake</h3>
+            <p>
+              Detect CMake, Make, Ninja, C and C++ sources, headers, tests,
+              benchmarks, generated files, compilers, and supported flags.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="icon">02</span>
+            <h3>Correctness gates</h3>
+            <p>
+              Run warning analysis, sanitizer builds, static heuristics, and
+              project tests before treating a candidate as valid.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="icon">03</span>
+            <h3>Measured optimization</h3>
+            <p>
+              Compare safe compiler configurations, benchmark repeated runs,
+              and report latency, throughput, failures, and artifact size.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="icon">04</span>
+            <h3>Business reporting</h3>
+            <p>
+              Produce JSON and HTML reports showing what was tested, what
+              passed, and whether an improvement was actually measured.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="under-hood" class="section ide-section">
+        <div class="section-heading">
+          <p class="eyebrow">Under the hood</p>
+          <h2>What happens when you run TurboBuild.</h2>
+          <p>
+            The CLI does normal build engineering work: inspect the project,
+            probe compilers, run safe configs, measure the command, and write
+            files your team can review.
+          </p>
+        </div>
+
+        <div class="ide-grid">
+          <div class="ide-window">
+            <div class="ide-top">
+              <span></span><span></span><span></span>
+              <strong>src/order_book.cpp</strong>
+            </div>
+            <div class="ide-body">
+              <aside>
+                <p>project</p>
+                <span>src/main.cpp</span>
+                <span class="active-file">src/order_book.cpp</span>
+                <span>src/benchmark.cpp</span>
+                <span>CMakeLists.txt</span>
+                <span>.turbobuild/results</span>
+              </aside>
+              <pre><code><span class="code-type">std::vector</span>&lt;<span class="code-type">Order</span>&gt; orders;
+<span class="code-keyword">for</span> (<span class="code-keyword">const auto</span>&amp; event : feed) {
+  orders.<span class="code-call">push_back</span>(<span class="code-call">parse_order</span>(event));
+}
+
+<span class="code-comment">// TurboBuild finding:</span>
+<span class="code-comment">// repeated vector growth in measured path</span>
+orders.<span class="code-call">reserve</span>(feed.<span class="code-call">size</span>());</code></pre>
+            </div>
+          </div>
+
+          <div class="pipeline-panel">
+            <div>
+              <span>01</span>
+              <h3>Scan</h3>
+              <p>Find CMake, source files, headers, tests, benchmarks, generated code, and build outputs.</p>
+            </div>
+            <div>
+              <span>02</span>
+              <h3>Probe</h3>
+              <p>Check GCC/Clang availability and supported flags like <code>-O2</code>, <code>-O3</code>, <code>-Os</code>, <code>-Oz</code>, and LTO.</p>
+            </div>
+            <div>
+              <span>03</span>
+              <h3>Measure</h3>
+              <p>Run warmups and repeated samples, then calculate mean, median, p95, p99, throughput, failures, and artifact size.</p>
+            </div>
+            <div>
+              <span>04</span>
+              <h3>Report</h3>
+              <p>Write JSON and HTML under <code>.turbobuild/results</code> so the result can be reviewed or uploaded by CI.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="sandbox-grid">
+          <div class="sandbox-card">
+            <h3>Edit the project idea</h3>
+            <textarea id="ideaInput">Low-latency C++ service with an order book hot path and repeated vector growth.</textarea>
+          </div>
+          <div class="sandbox-card">
+            <h3>Paste a code sample</h3>
+            <textarea id="codeInput">std::vector&lt;Order&gt; orders;
+for (const auto&amp; event : feed) {
+  orders.push_back(parse_order(event));
+}</textarea>
+            <button class="button button-dark" id="simulateCode" type="button">Test the sample</button>
+          </div>
+          <div class="sandbox-card sandbox-output">
+            <h3>Preview result</h3>
+            <pre><code id="sandboxOutput">Finding: repeated vector growth
+Suggested experiment: reserve container capacity
+Run: turbobuild benchmark --runs 100 --warmups 5 --command ".\app.exe"</code></pre>
+          </div>
+        </div>
+
+        <div class="report-strip">
+          <div><strong>analysis.json</strong><span>project shape, compilers, flags</span></div>
+          <div><strong>warnings.json</strong><span>severity, fix hints, source lines</span></div>
+          <div><strong>benchmark.json</strong><span>mean, p95, p99, throughput</span></div>
+          <div><strong>optimize-summary.json</strong><span>baseline vs best measured config</span></div>
+        </div>
+
+        <div class="terminal-deep-dive">
+          <div class="terminal-header">
+            <span></span><span></span><span></span>
+          </div>
+          <pre><code>$ turbobuild optimize --goal speed --runs 100 --warmups 5 --benchmark-command ".\app.exe"
+[doctor] cmake found, gcc found, clang found
+[build] gcc-o2      artifact=1.92 MB   mean=52.4 ms   p99=81.2 ms
+[build] gcc-o3      artifact=1.86 MB   mean=45.6 ms   p99=70.8 ms
+[build] gcc-o2-lto  artifact=1.70 MB   mean=42.8 ms   p99=67.1 ms
+[report] wrote .turbobuild/results/optimize-summary.json</code></pre>
+        </div>
+      </section>
+
+      <section class="section lifecycle-section">
+        <div class="section-heading">
+          <p class="eyebrow">How teams use it</p>
+          <h2>A practical lifecycle for performance work.</h2>
+          <p>
+            Run it locally while investigating a change, then move the same
+            checks into CI when the workflow becomes part of release quality.
+          </p>
+        </div>
+
+        <div class="lifecycle">
+          <div>
+            <span>1</span>
+            <h3>Check readiness</h3>
+            <p>Confirm compilers, build system, tests, benchmarks, and analysis tools.</p>
+            <code>turbobuild doctor --project .</code>
+          </div>
+          <div>
+            <span>2</span>
+            <h3>Build safely</h3>
+            <p>Generate isolated builds under <code>.turbobuild/builds</code>.</p>
+            <code>turbobuild build --project . --config gcc-o2</code>
+          </div>
+          <div>
+            <span>3</span>
+            <h3>Measure honestly</h3>
+            <p>Run warmups and repeated samples before calling anything faster.</p>
+            <code>turbobuild optimize --goal speed --benchmark-command ".\app.exe"</code>
+          </div>
+          <div>
+            <span>4</span>
+            <h3>Share reports</h3>
+            <p>Write JSON and HTML output under <code>.turbobuild/results</code>.</p>
+            <code>turbobuild report --format html</code>
+          </div>
+        </div>
+      </section>
+
+      <section id="optimizer-lab" class="section lab-section">
+        <div class="section-heading">
+          <p class="eyebrow">Optimizer lab</p>
+          <h2>Build the command before you run it.</h2>
+          <p>
+            Pick a project profile and goal. The preview builds a command,
+            shows the run plan, and keeps the benchmark settings easy to check.
+          </p>
+        </div>
+
+        <div class="lab-grid">
+          <div class="lab-controls">
+            <label>
+              Project profile
+              <select id="profileSelect">
+                <option value="service">Low-latency backend service</option>
+                <option value="engine">Game or simulation engine</option>
+                <option value="embedded">Embedded binary-size target</option>
+              </select>
+            </label>
+            <label>
+              Optimization goal
+              <select id="goalSelect">
+                <option value="speed">Speed</option>
+                <option value="size">Binary size</option>
+                <option value="balanced">Balanced</option>
+              </select>
+            </label>
+            <label>
+              Benchmark command
+              <input id="benchCommand" value=".\app.exe --scenario production" />
+            </label>
+            <button class="button button-dark" id="buildCommand" type="button">Build run command</button>
+          </div>
+
+          <div class="lab-output">
+            <div class="terminal-header">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <pre><code id="generatedCommand">turbobuild optimize --project .\project --goal speed --runs 100 --warmups 5 --benchmark-command ".\app.exe --scenario production"</code></pre>
+            <div class="run-plan" id="runPlan">
+              Analyze project -> run tests -> benchmark safe configs -> write report
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow" class="section split-section">
+        <div>
+          <p class="eyebrow">Runbook</p>
+          <h2>From uploaded project to optimization report.</h2>
+          <p>
+            This is the high-level operating model for teams using TurboBuild
+            across internal C++ services, tools, simulations, engines, and
+            libraries.
+          </p>
+        </div>
+
+        <div class="tab-shell">
+          <div class="tabs" role="tablist" aria-label="Optimization workflow">
+            <button class="tab active" type="button" data-tab="intake">Intake</button>
+            <button class="tab" type="button" data-tab="validate">Validate</button>
+            <button class="tab" type="button" data-tab="measure">Measure</button>
+            <button class="tab" type="button" data-tab="ship">Ship</button>
+          </div>
+          <div class="tab-panel active" id="intake">
+            <h3>Upload or connect the project</h3>
+            <p>
+              Start with a local path today. The hosted product waitlist is
+              designed around uploading a zipped C++ project and receiving a
+              readiness scan.
+            </p>
+            <code>turbobuild analyze --project path\to\project</code>
+          </div>
+          <div class="tab-panel" id="validate">
+            <h3>Prove the code still behaves</h3>
+            <p>
+              Run warnings, sanitizers, static analysis, and tests before any
+              performance claim is accepted.
+            </p>
+            <code>turbobuild warnings --project path\to\project --strict</code>
+          </div>
+          <div class="tab-panel" id="measure">
+            <h3>Benchmark candidate builds</h3>
+            <p>
+              Run warmups and repeated samples across compiler configurations.
+              TurboBuild tracks p50, p95, p99, mean, standard deviation, and
+              throughput.
+            </p>
+            <code>turbobuild optimize --goal speed --benchmark-command ".\app.exe"</code>
+          </div>
+          <div class="tab-panel" id="ship">
+            <h3>Report the measured result</h3>
+            <p>
+              Export reports for engineering review, release notes, or business
+              signoff. No unmeasured speedup claims are reported as wins.
+            </p>
+            <code>turbobuild report --project path\to\project --format html</code>
+          </div>
+        </div>
+      </section>
+
+      <section class="section cpp-section">
+        <div class="section-heading">
+          <p class="eyebrow">C++ findings</p>
+          <h2>Optimization opportunities shown in code, not vague advice.</h2>
+          <p>
+            TurboBuild reports concrete C++ patterns that deserve measurement:
+            allocation churn, cache locality issues, branch behavior, I/O flushes,
+            unsafe casts, sanitizer failures, and compiler flag differences.
+          </p>
+        </div>
+
+        <div class="code-showcase">
+          <div class="code-tabs" role="tablist" aria-label="C++ optimization examples">
+            <button class="code-tab active" type="button" data-code="reserve">vector reserve</button>
+            <button class="code-tab" type="button" data-code="endl">I/O flush</button>
+            <button class="code-tab" type="button" data-code="string">string_view</button>
+            <button class="code-tab" type="button" data-code="layout">data layout</button>
+            <button class="code-tab" type="button" data-code="flags">safe flags</button>
+          </div>
+          <div class="code-panel active" id="reserve">
+            <pre><code>std::vector&lt;Order&gt; orders;
+for (const auto&amp; event : feed) {
+  orders.push_back(parse_order(event)); // finding: repeated growth
+}
+
+// Candidate to measure:
+orders.reserve(feed.size());</code></pre>
+            <p>TurboBuild marks this as a candidate, then requires benchmark data before claiming a win.</p>
+          </div>
+          <div class="code-panel" id="endl">
+            <pre><code>for (const auto&amp; row : report) {
+  out &lt;&lt; row.symbol &lt;&lt; "," &lt;&lt; row.price &lt;&lt; std::endl;
+}
+
+// Candidate to measure:
+out &lt;&lt; row.symbol &lt;&lt; "," &lt;&lt; row.price &lt;&lt; '\n';</code></pre>
+            <p><code>std::endl</code> flushes the stream. TurboBuild flags it when it appears in likely hot paths.</p>
+          </div>
+          <div class="code-panel" id="string">
+            <pre><code>bool has_prefix(const std::string&amp; value,
+                const std::string&amp; prefix) {
+  return value.rfind(prefix, 0) == 0;
+}
+
+// Candidate to measure:
+bool has_prefix(std::string_view value,
+                std::string_view prefix) {
+  return value.starts_with(prefix);
+}</code></pre>
+            <p>TurboBuild highlights avoidable string copies and suggests a measured experiment, not an automatic rewrite.</p>
+          </div>
+          <div class="code-panel" id="layout">
+            <pre><code>struct Particle {
+  float x, y, z;
+  float vx, vy, vz;
+};
+
+std::vector&lt;Particle&gt; particles;
+
+// Candidate for hot loops:
+struct ParticlesSoA {
+  std::vector&lt;float&gt; x, y, z;
+  std::vector&lt;float&gt; vx, vy, vz;
+};</code></pre>
+            <p>Cache-sensitive layouts are reported as high-impact candidates when profiling points at tight loops.</p>
+          </div>
+          <div class="code-panel" id="flags">
+            <pre><code>Safe candidates:
+  -O2
+  -O3
+  -Os
+  -Oz
+  -O2 -flto
+
+Explicit opt-in only:
+  -Ofast
+  -ffast-math
+  -march=native</code></pre>
+            <p>Semantic-changing or portability-changing flags stay blocked unless the team opts in.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section example-section">
+          <div class="section-heading">
+            <p class="eyebrow">Example reports</p>
+            <h2>Clear output for engineering and business review.</h2>
+            <p>
+              TurboBuild turns command-line work into readable reports: what was tested,
+              what passed, which flags were used, and what actually improved.
+            </p>
+          </div>
+
+          <div class="example-grid">
+            <article class="example-card blue-card">
+              <h3>Latency service</h3>
+              <p>Goal: reduce p95 request time without changing floating-point behavior.</p>
+              <dl>
+                <div><dt>Baseline</dt><dd>52.4 ms</dd></div>
+                <div><dt>Candidate</dt><dd>42.8 ms</dd></div>
+                <div><dt>Result</dt><dd>18.4% faster</dd></div>
+              </dl>
+            </article>
+            <article class="example-card green-card">
+              <h3>Embedded tool</h3>
+              <p>Goal: shrink the binary while keeping the same test result.</p>
+              <dl>
+                <div><dt>Baseline</dt><dd>2.1 MB</dd></div>
+                <div><dt>Candidate</dt><dd>1.7 MB</dd></div>
+                <div><dt>Result</dt><dd>19.0% smaller</dd></div>
+              </dl>
+            </article>
+            <article class="example-card red-card">
+              <h3>Safety gate</h3>
+              <p>Goal: block risky optimization until correctness checks pass.</p>
+              <dl>
+                <div><dt>Warnings</dt><dd>12</dd></div>
+                <div><dt>Sanitizer</dt><dd>ASan fail</dd></div>
+                <div><dt>Result</dt><dd>No claim</dd></div>
+              </dl>
+            </article>
+          </div>
+      </section>
+
+      <section id="commands" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Command center</p>
+          <h2>Commands for day-to-day C++ optimization.</h2>
+          <p>
+            Copy the commands that match your optimization stage. Each one
+            writes structured results under <code>.turbobuild/results</code>.
+          </p>
+        </div>
+
+        <div class="command-grid">
+          <article class="command-card">
+            <h3>Doctor</h3>
+            <p>Check readiness before running deeper optimization work.</p>
+            <pre><code>turbobuild doctor --project path\to\project</code></pre>
+            <button class="copy-button" type="button">Copy</button>
+          </article>
+          <article class="command-card">
+            <h3>Analyze</h3>
+            <p>Discover project shape, compilers, flags, tests, and build systems.</p>
+            <pre><code>turbobuild analyze --project path\to\project</code></pre>
+            <button class="copy-button" type="button">Copy</button>
+          </article>
+          <article class="command-card">
+            <h3>Warnings</h3>
+            <p>Run strict compiler warnings and categorize correctness risks.</p>
+            <pre><code>turbobuild warnings --project path\to\project --strict</code></pre>
+            <button class="copy-button" type="button">Copy</button>
+          </article>
+          <article class="command-card">
+            <h3>Benchmark</h3>
+            <p>Collect warmups, repeated runs, percentiles, and throughput.</p>
+            <pre><code>turbobuild benchmark --runs 100 --warmups 5 --command ".\app.exe"</code></pre>
+            <button class="copy-button" type="button">Copy</button>
+          </article>
+          <article class="command-card">
+            <h3>Optimize</h3>
+            <p>Test safe candidate configs and pick the best measured result.</p>
+            <pre><code>turbobuild optimize --goal speed --benchmark-command ".\app.exe"</code></pre>
+            <button class="copy-button" type="button">Copy</button>
+          </article>
+          <article class="command-card">
+            <h3>CI workflow</h3>
+            <p>Create a GitHub Actions workflow for readiness and reports.</p>
+            <pre><code>turbobuild init-ci --project path\to\project</code></pre>
+            <button class="copy-button" type="button">Copy</button>
+          </article>
+        </div>
+      </section>
+
+      <section id="upload" class="section upload-section">
+        <div>
+          <p class="eyebrow">Project intake</p>
+          <h2>Preview a project upload workflow.</h2>
+          <p>
+            A hosted version could turn TurboBuild into a team workflow:
+            upload a project archive, choose a goal, run tests and benchmarks,
+            and receive a reviewed optimization report.
+          </p>
+          <ul class="check-list">
+            <li>Detect build system, source files, headers, tests, and benchmarks</li>
+            <li>Ask for the benchmark command before optimization starts</li>
+            <li>Block risky flags unless the team explicitly opts in</li>
+            <li>Export reports that engineering and management can both read</li>
+          </ul>
+        </div>
+        <div class="upload-box" id="uploadBox">
+          <input id="projectUpload" type="file" accept=".zip,.tar,.gz,.7z" />
+          <label for="projectUpload">
+            <strong>Drop a C++ project archive</strong>
+            <span>ZIP, TAR, GZ, or 7Z preview only</span>
+          </label>
+          <div class="upload-controls">
+            <label>
+              Goal
+              <select id="uploadGoal">
+                <option value="speed">Speed</option>
+                <option value="size">Binary size</option>
+                <option value="correctness">Warnings and correctness</option>
+                <option value="balanced">Balanced</option>
+              </select>
+            </label>
+            <label>
+              Benchmark command
+              <input id="uploadBenchmark" value=".\app.exe --scenario production" />
+            </label>
+          </div>
+          <div class="upload-status" id="uploadStatus">No project selected.</div>
+          <div class="scan-preview" id="scanPreview">
+            <div><span></span> Project archive selected</div>
+            <div><span></span> Build system discovery</div>
+            <div><span></span> Test and sanitizer plan</div>
+            <div><span></span> Benchmark command ready</div>
+            <div><span></span> Report package queued</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="waitlist" class="section waitlist-section">
+        <div class="waitlist-copy">
+          <p class="eyebrow">Early access</p>
+          <h2>Join the TurboBuild waitlist.</h2>
+          <p>
+            Get notified when project upload, managed optimizer runs, report
+            history, team review, and business dashboards are ready.
+          </p>
+          <ul class="check-list">
+            <li>Upload C++ project archives for analysis</li>
+            <li>Run optimizer tests against your benchmark command</li>
+            <li>Review measured speed, size, and correctness results</li>
+          </ul>
+        </div>
+        <form class="waitlist-form" id="waitlistForm">
+          <label>
+            Work email
+            <input name="email" type="email" placeholder="you@company.com" required />
+          </label>
+          <label>
+            Project type
+            <select name="projectType">
+              <option>Backend service</option>
+              <option>Game engine</option>
+              <option>Trading or simulation</option>
+              <option>Embedded system</option>
+              <option>Library or SDK</option>
+            </select>
+          </label>
+          <label>
+            Optimization goal
+            <select name="goal">
+              <option>Speed</option>
+              <option>Binary size</option>
+              <option>Warnings and correctness</option>
+              <option>Balanced</option>
+            </select>
+          </label>
+          <button class="button button-dark" type="submit">Request early access</button>
+          <p class="form-status" id="formStatus" role="status"></p>
+        </form>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>TurboBuild</span>
+      <span>Measured optimization for C and C++ projects.</span>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
