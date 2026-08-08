@@ -10,7 +10,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(turbobuild
-  src/main.cpp)
+  src/main.cpp
+  src/turbobuild.cpp
+  src/turbobuild.h)
 
 target_compile_features(turbobuild PRIVATE cxx_std_17)
 

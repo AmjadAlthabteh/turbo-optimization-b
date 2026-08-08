@@ -32,6 +32,8 @@ turbobuild optimize --project path\to\project --goal size --benchmark-command ".
 turbobuild compare gcc clang --project path\to\project --benchmark-command ".\app.exe"
 turbobuild profile --project path\to\project
 turbobuild report --project path\to\project --format html
+turbobuild doctor --project path\to\project
+turbobuild init-ci --project path\to\project
 ```
 
 ## Safety
@@ -44,6 +46,27 @@ Unsafe semantic-changing flags are disabled unless explicitly requested:
 
 TurboBuild creates isolated build directories under `.turbobuild/builds` by
 default and stores measurements under `.turbobuild/results`.
+
+## Architecture
+
+The executable entry point is intentionally small:
+
+- `src/main.cpp` delegates to the application runner.
+- `src/turbobuild.h` exposes the public CLI boundary.
+- `src/turbobuild.cpp` contains the current implementation behind that boundary.
+
+See `docs/architecture.md` for the command flow and maintainer notes.
+
+## Project Readiness And CI
+
+`turbobuild doctor` writes `.turbobuild/results/doctor.json` and summarizes
+whether the target project has a supported build system, available compiler
+configs, tests, benchmarks, and analysis tools.
+
+`turbobuild init-ci` creates `.github/workflows/turbobuild.yml` with a practical
+GitHub Actions workflow for building TurboBuild, running `doctor`, collecting
+warning/static-analysis reports, and uploading the result artifacts. Existing
+workflow files are not overwritten unless `--force` is supplied.
 
 ## Warning Analysis
 
