@@ -39,12 +39,14 @@ jobs:
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
             git fetch origin gh-pages
             git switch gh-pages
+            cp CNAME /tmp/turbobuild-cname 2>/dev/null || true
           else
             git switch --orphan gh-pages
           fi
 
           git rm -rf . >/dev/null 2>&1 || true
           cp -R /tmp/turbobuild-site/. .
+          cp /tmp/turbobuild-cname CNAME 2>/dev/null || true
           touch .nojekyll
 
           git add .
