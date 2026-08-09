@@ -40,7 +40,10 @@
             </select>
           </label>
         </div>
-        <button class="button button-dark" id="saveWelcome" type="button">Open TurboBuild</button>
+        <div class="welcome-actions">
+          <button class="button button-dark" id="saveWelcome" type="button">Apply setup</button>
+          <button class="button button-light" id="skipWelcome" type="button">Skip for now</button>
+        </div>
       </div>
     </div>
 
@@ -50,14 +53,12 @@
         <span>TurboBuild</span>
       </a>
       <nav class="nav" aria-label="Primary navigation">
+        <a href="#quickstart">Quick start</a>
         <a href="#platform">Platform</a>
-        <a href="#under-hood">Under hood</a>
-        <a href="#solves">Use cases</a>
-        <a href="#upload">Upload</a>
+        <a href="#optimizer-lab">Command builder</a>
         <a href="#commands">Commands</a>
-        <a href="#workflow">Workflow</a>
       </nav>
-      <a class="button button-dark" href="#waitlist">Join waitlist</a>
+      <a class="button button-dark" href="#quickstart">Start using it</a>
     </header>
 
     <main id="home">
@@ -73,8 +74,7 @@
             claims.
           </p>
           <div class="hero-actions">
-            <a class="button button-dark" href="#upload">Preview upload scan</a>
-            <a class="button button-dark" href="#workflow">See workflow</a>
+            <a class="button button-dark" href="#quickstart">Start in 3 steps</a>
             <a class="button button-light" href="#optimizer-lab">Build a command</a>
           </div>
           <div class="trust-row" aria-label="Optimization safety guarantees">
@@ -138,6 +138,41 @@
         <span>Sanitize</span>
         <span>Profile</span>
         <span>Report</span>
+      </section>
+
+      <section id="quickstart" class="section quickstart-section">
+        <div class="section-heading">
+          <p class="eyebrow">Quick start</p>
+          <h2>Use TurboBuild on a local C or C++ project in minutes.</h2>
+          <p>
+            Start with a readiness check, build one safe config, then benchmark
+            only when you have a real command to measure.
+          </p>
+        </div>
+
+        <div class="quickstart-grid">
+          <article class="quickstart-card">
+            <span>1</span>
+            <h3>Check the project</h3>
+            <p>Confirm sources, build system, compilers, tests, and benchmarks.</p>
+            <pre><code>turbobuild doctor --project .</code></pre>
+            <button class="copy-button" type="button">Copy</button>
+          </article>
+          <article class="quickstart-card">
+            <span>2</span>
+            <h3>Run safe checks</h3>
+            <p>Build with normal flags and review warnings before tuning speed.</p>
+            <pre><code>turbobuild warnings --project . --strict</code></pre>
+            <button class="copy-button" type="button">Copy</button>
+          </article>
+          <article class="quickstart-card">
+            <span>3</span>
+            <h3>Measure a workload</h3>
+            <p>Use warmups and repeated runs so results are useful.</p>
+            <pre><code>turbobuild optimize --project . --goal speed --runs 100 --warmups 5 --benchmark-command ".\app.exe"</code></pre>
+            <button class="copy-button" type="button">Copy</button>
+          </article>
+        </div>
       </section>
 
       <section class="metric-ribbon" aria-label="Example measured output">
@@ -425,6 +460,7 @@ Run: turbobuild benchmark --runs 100 --warmups 5 --command ".\app.exe"</code></p
             <div class="run-plan" id="runPlan">
               Analyze project -> run tests -> benchmark safe configs -> write report
             </div>
+            <button class="button button-dark lab-copy" id="copyGeneratedCommand" type="button">Copy command</button>
           </div>
         </div>
       </section>
