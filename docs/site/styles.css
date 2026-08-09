@@ -133,6 +133,7 @@ pre {
 .feature-card,
 .solve-card,
 .command-card,
+.quickstart-card,
 .example-card,
 .lifecycle div,
 .upload-box label,
@@ -186,6 +187,12 @@ select {
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 24px 0;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .welcome-grid label {
@@ -565,7 +572,8 @@ h3 {
 
 .feature-grid,
 .command-grid,
-.solve-grid {
+.solve-grid,
+.quickstart-grid {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -574,6 +582,7 @@ h3 {
 .feature-card,
 .solve-card,
 .command-card,
+.quickstart-card,
 .tab-shell,
 .upload-box,
 .waitlist-form,
@@ -587,7 +596,8 @@ h3 {
 
 .feature-card,
 .solve-card,
-.command-card {
+.command-card,
+.quickstart-card {
   min-height: 210px;
   padding: 20px;
   position: relative;
@@ -595,7 +605,8 @@ h3 {
 
 .feature-card::before,
 .solve-card::before,
-.command-card::before {
+.command-card::before,
+.quickstart-card::before {
   background: linear-gradient(90deg, var(--accent), var(--blue));
   border-radius: 8px 8px 0 0;
   content: "";
@@ -609,6 +620,7 @@ h3 {
 .feature-card:hover,
 .solve-card:hover,
 .command-card:hover,
+.quickstart-card:hover,
 .lifecycle div:hover,
 .pipeline-panel div:hover,
 .report-strip div:hover {
@@ -877,9 +889,46 @@ h3 {
 .feature-card p,
 .solve-card p,
 .command-card p,
+.quickstart-card p,
 .tab-panel p,
 .check-list {
   color: var(--muted);
+}
+
+.quickstart-section {
+  background: rgba(255, 255, 255, 0.018);
+  border-bottom: 1px solid var(--line);
+}
+
+.quickstart-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.quickstart-card {
+  min-height: 280px;
+}
+
+.quickstart-card > span {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 50%;
+  color: #02100d;
+  display: inline-flex;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  margin-bottom: 20px;
+  width: 34px;
+}
+
+.quickstart-card pre {
+  background: var(--code);
+  border-radius: 7px;
+  color: #d6f4ef;
+  margin: 18px 0 0;
+  overflow-x: auto;
+  padding: 16px;
+  white-space: pre-wrap;
 }
 
 .solve-section {
@@ -1033,6 +1082,10 @@ h3 {
   padding: 16px 24px;
 }
 
+.lab-copy {
+  margin: 0 24px 24px;
+}
+
 .terminal-deep-dive {
   background: var(--code);
   border: 1px solid var(--line);
@@ -1163,7 +1216,8 @@ h3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.command-card {
+.command-card,
+.quickstart-card {
   position: relative;
 }
 
@@ -1562,6 +1616,7 @@ select:focus {
   .command-grid,
   .example-grid,
   .solve-grid,
+  .quickstart-grid,
   .lifecycle,
   .metric-ribbon,
   .report-strip,
@@ -1588,6 +1643,7 @@ select:focus {
   .command-grid,
   .example-grid,
   .solve-grid,
+  .quickstart-grid,
   .lifecycle,
   .metric-ribbon,
   .report-strip,

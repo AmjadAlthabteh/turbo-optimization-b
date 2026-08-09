@@ -2,10 +2,19 @@ const tabs = document.querySelectorAll(".tab");
 const panels = document.querySelectorAll(".tab-panel");
 const welcomeModal = document.querySelector("#welcomeModal");
 const saveWelcome = document.querySelector("#saveWelcome");
+const skipWelcome = document.querySelector("#skipWelcome");
 const visitorFocus = document.querySelector("#visitorFocus");
 const visitorColor = document.querySelector("#visitorColor");
 
-const savedPrefs = JSON.parse(localStorage.getItem("turboPrefs") || "null");
+function readStoredJson(key, fallback) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+  } catch {
+    return fallback;
+  }
+}
+
+const savedPrefs = readStoredJson("turboPrefs", null);
 
 function applyVisitorPrefs(prefs) {
   if (!prefs) return;
@@ -55,6 +64,14 @@ if (saveWelcome && visitorFocus && visitorColor && welcomeModal) {
 
     localStorage.setItem("turboPrefs", JSON.stringify(prefs));
     applyVisitorPrefs(prefs);
+    welcomeModal.classList.remove("visible");
+    welcomeModal.setAttribute("aria-hidden", "true");
+  });
+}
+
+if (skipWelcome && welcomeModal) {
+  skipWelcome.addEventListener("click", () => {
+    localStorage.setItem("turboPrefs", JSON.stringify({ focus: "speed", color: "green" }));
     welcomeModal.classList.remove("visible");
     welcomeModal.setAttribute("aria-hidden", "true");
   });
@@ -119,22 +136,37 @@ if (profileSelect && goalSelect && benchCommand && buildCommand) {
   buildCommand.addEventListener("click", updateGeneratedCommand);
 }
 
-document.querySelectorAll(".command-card").forEach((card) => {
+async function copyText(text, button) {
+  try {
+    await navigator.clipboard.writeText(text);
+    button.textContent = "Copied";
+    setTimeout(() => {
+      button.textContent = button.dataset.label || "Copy";
+    }, 1200);
+  } catch {
+    button.textContent = "Select";
+  }
+}
+
+document.querySelectorAll(".command-card, .quickstart-card").forEach((card) => {
   const button = card.querySelector(".copy-button");
-  const command = card.querySelector("code").textContent.trim();
+  const code = card.querySelector("code");
+  if (!button || !code) return;
+  button.dataset.label = button.textContent;
 
   button.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      button.textContent = "Copied";
-      setTimeout(() => {
-        button.textContent = "Copy";
-      }, 1200);
-    } catch {
-      button.textContent = "Select";
-    }
+    await copyText(code.textContent.trim(), button);
   });
 });
+
+const copyGeneratedCommand = document.querySelector("#copyGeneratedCommand");
+
+if (copyGeneratedCommand && generatedCommand) {
+  copyGeneratedCommand.dataset.label = copyGeneratedCommand.textContent;
+  copyGeneratedCommand.addEventListener("click", async () => {
+    await copyText(generatedCommand.textContent.trim(), copyGeneratedCommand);
+  });
+}
 
 const uploadInput = document.querySelector("#projectUpload");
 const uploadStatus = document.querySelector("#uploadStatus");
@@ -231,7 +263,7 @@ if (waitlistForm && formStatus) {
       createdAt: new Date().toISOString(),
     };
 
-    const current = JSON.parse(localStorage.getItem("turboWaitlist") || "[]");
+    const current = readStoredJson("turboWaitlist", []);
     current.push(entry);
     localStorage.setItem("turboWaitlist", JSON.stringify(current));
 

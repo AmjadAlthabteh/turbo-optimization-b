@@ -16,6 +16,17 @@ cmake --build build
 
 The executable is generated as `build/turbobuild.exe` on Windows.
 
+## Website Preview
+
+The static product page lives in `docs/site`. Open `docs/site/index.html` in a
+browser to preview it locally. The page includes a quick-start section, command
+builder, copy buttons, upload-flow preview, and waitlist confirmation stored in
+browser local storage.
+
+To add a new command example, add another card with a `<pre><code>...</code></pre>`
+block and a `.copy-button`; `docs/site/script.js` wires the copy behavior
+automatically.
+
 ## Commands
 
 ```powershell
