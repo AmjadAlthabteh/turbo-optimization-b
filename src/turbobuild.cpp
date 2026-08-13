@@ -47,6 +47,7 @@ struct Options {
   std::string config;
   std::string goal = "balanced";
   std::string format = "json";
+  std::string label;
   std::string benchmark_command;
   int runs = 10;
   int warmups = 0;
@@ -195,6 +196,15 @@ bool contains_case_insensitive(std::string haystack, std::string needle) {
   return haystack.find(needle) != std::string::npos;
 }
 
+std::string safe_filename(std::string value) {
+  if (value.empty()) return "benchmark";
+  for (char &ch : value) {
+    const bool safe = std::isalnum(static_cast<unsigned char>(ch)) || ch == '-' || ch == '_';
+    if (!safe) ch = '-';
+  }
+  return value;
+}
+
 // CLI and workspace paths
 
 bool is_build_or_metadata_path(const fs::path &root, const fs::path &path) {
@@ -226,6 +236,7 @@ Options parse_args(int argc, char **argv) {
     else if (arg == "--config") options.config = need_value(arg);
     else if (arg == "--goal") options.goal = need_value(arg);
     else if (arg == "--format") options.format = need_value(arg);
+    else if (arg == "--label") options.label = need_value(arg);
     else if (arg == "--runs") options.runs = std::stoi(need_value(arg));
     else if (arg == "--warmups") options.warmups = std::stoi(need_value(arg));
     else if (arg == "--command" || arg == "--benchmark-command") options.benchmark_command = need_value(arg);
@@ -1074,12 +1085,14 @@ int command_test(const Options &options) {
 
 int command_benchmark(const Options &options) {
   if (!is_one_of(options.format, {"json", "csv"})) throw std::runtime_error("benchmark --format must be json or csv");
+  const std::string name = options.label.empty() ? "benchmark" : options.label;
+  const fs::path base = result_dir(options) / safe_filename(name);
   BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
-  print_benchmark("benchmark", stats);
-  write_benchmark_json(result_dir(options) / "benchmark.json", "benchmark", options.benchmark_command, stats);
+  print_benchmark(name, stats);
+  write_benchmark_json(base.string() + ".json", name, options.benchmark_command, stats);
   if (options.format == "csv") {
-    write_benchmark_csv(result_dir(options) / "benchmark.csv", "benchmark", stats);
-    std::cout << "Wrote " << (result_dir(options) / "benchmark.csv") << "\n";
+    write_benchmark_csv(base.string() + ".csv", name, stats);
+    std::cout << "Wrote " << (base.string() + ".csv") << "\n";
   }
   return stats.failures == 0 ? 0 : 1;
 }
@@ -1341,7 +1354,7 @@ void usage() {
       << "  warnings [--project PATH] [gcc|clang] [--strict]\n"
       << "  sanitize [--project PATH] [gcc|clang] [--command CMD]\n"
       << "  static-analysis [--project PATH]\n"
-      << "  benchmark --command CMD [--runs N] [--warmups N] [--format json|csv]\n"
+      << "  benchmark --command CMD [--runs N] [--warmups N] [--label NAME] [--format json|csv]\n"
       << "  profile [--command CMD] [--runs N] [--warmups N]\n"
       << "  optimize --goal speed|size|balanced [--benchmark-command CMD] [--runs N]\n"
       << "  compare gcc clang [--benchmark-command CMD] [--runs N]\n"

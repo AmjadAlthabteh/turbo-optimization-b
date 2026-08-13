@@ -39,6 +39,7 @@ turbobuild sanitize --project path\to\project
 turbobuild static-analysis --project path\to\project
 turbobuild benchmark --project path\to\project --runs 100 --command ".\app.exe"
 turbobuild benchmark --project path\to\project --warmups 5 --runs 100 --command ".\app.exe"
+turbobuild benchmark --project path\to\project --label parser-hot-path --command ".\app.exe --case parser"
 turbobuild benchmark --project path\to\project --format csv --command ".\app.exe"
 turbobuild optimize --project path\to\project --goal speed --benchmark-command ".\app.exe"
 turbobuild optimize --project path\to\project --goal size --benchmark-command ".\app.exe"
