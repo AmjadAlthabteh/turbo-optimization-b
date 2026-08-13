@@ -23,3 +23,13 @@ else()
 endif()
 
 install(TARGETS turbobuild RUNTIME DESTINATION bin)
+
+include(CTest)
+
+if(BUILD_TESTING)
+  add_test(NAME cli_help COMMAND turbobuild --help)
+  add_test(NAME cli_benchmark_smoke
+    COMMAND turbobuild benchmark --project ${CMAKE_SOURCE_DIR} --runs 1 --command "$<TARGET_FILE:turbobuild> --help")
+  add_test(NAME cli_report_html
+    COMMAND turbobuild report --project ${CMAKE_SOURCE_DIR} --format html)
+endif()
