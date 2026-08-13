@@ -1152,6 +1152,32 @@ int command_report(const Options &options) {
   return 0;
 }
 
+int command_results(const Options &options) {
+  fs::path dir = result_dir(options);
+  if (!fs::exists(dir)) {
+    std::cout << "No TurboBuild results found at " << dir << "\n";
+    return 0;
+  }
+  std::vector<fs::directory_entry> files;
+  for (const auto &entry : fs::directory_iterator(dir)) {
+    if (entry.is_regular_file()) files.push_back(entry);
+  }
+  std::sort(files.begin(), files.end(), [](const auto &a, const auto &b) {
+    return a.path().filename().string() < b.path().filename().string();
+  });
+  if (files.empty()) {
+    std::cout << "No TurboBuild result files found at " << dir << "\n";
+    return 0;
+  }
+  std::cout << "TurboBuild results in " << dir << ":\n";
+  std::error_code ignored;
+  for (const auto &entry : files) {
+    std::cout << "  " << entry.path().filename().string()
+              << " (" << entry.file_size(ignored) << " bytes)\n";
+  }
+  return 0;
+}
+
 int command_doctor(const Options &options) {
   ProjectInfo info = analyze_project(options.project);
   auto compilers = detect_compilers();
@@ -1264,6 +1290,7 @@ void usage() {
       << "  profile [--command CMD] [--runs N] [--warmups N]\n"
       << "  optimize --goal speed|size|balanced [--benchmark-command CMD] [--runs N]\n"
       << "  compare gcc clang [--benchmark-command CMD] [--runs N]\n"
+      << "  results [--project PATH]\n"
       << "  report [--format json|html]\n"
       << "  doctor [--project PATH]\n"
       << "  init-ci [--project PATH] [--force]\n"
@@ -1292,6 +1319,7 @@ int run_app(int argc, char **argv) {
     if (options.command == "profile") return command_profile(options);
     if (options.command == "optimize") return command_optimize(options);
     if (options.command == "compare") return command_compare(options);
+    if (options.command == "results") return command_results(options);
     if (options.command == "report") return command_report(options);
     if (options.command == "doctor") return command_doctor(options);
     if (options.command == "init-ci") return command_init_ci(options);
