@@ -694,6 +694,16 @@ void write_benchmark_json(const fs::path &path, const std::string &name, const s
   out << "}\n";
 }
 
+void write_benchmark_csv(const fs::path &path, const std::string &name, const BenchmarkStats &stats) {
+  fs::create_directories(path.parent_path());
+  std::ofstream out(path);
+  out << std::fixed << std::setprecision(3);
+  out << "name,run_index,latency_ms\n";
+  for (size_t i = 0; i < stats.samples_ms.size(); ++i) {
+    out << json_escape(name) << "," << (i + 1) << "," << stats.samples_ms[i] << "\n";
+  }
+}
+
 void print_benchmark(const std::string &name, const BenchmarkStats &stats) {
   std::cout << std::fixed << std::setprecision(3);
   std::cout << name << ": runs=" << stats.runs << " failures=" << stats.failures
@@ -1053,6 +1063,10 @@ int command_benchmark(const Options &options) {
   BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
   print_benchmark("benchmark", stats);
   write_benchmark_json(result_dir(options) / "benchmark.json", "benchmark", options.benchmark_command, stats);
+  if (options.format == "csv") {
+    write_benchmark_csv(result_dir(options) / "benchmark.csv", "benchmark", stats);
+    std::cout << "Wrote " << (result_dir(options) / "benchmark.csv") << "\n";
+  }
   return stats.failures == 0 ? 0 : 1;
 }
 
@@ -1306,7 +1320,7 @@ void usage() {
       << "  warnings [--project PATH] [gcc|clang] [--strict]\n"
       << "  sanitize [--project PATH] [gcc|clang] [--command CMD]\n"
       << "  static-analysis [--project PATH]\n"
-      << "  benchmark --command CMD [--runs N] [--warmups N]\n"
+      << "  benchmark --command CMD [--runs N] [--warmups N] [--format json|csv]\n"
       << "  profile [--command CMD] [--runs N] [--warmups N]\n"
       << "  optimize --goal speed|size|balanced [--benchmark-command CMD] [--runs N]\n"
       << "  compare gcc clang [--benchmark-command CMD] [--runs N]\n"

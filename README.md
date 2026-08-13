@@ -39,6 +39,7 @@ turbobuild sanitize --project path\to\project
 turbobuild static-analysis --project path\to\project
 turbobuild benchmark --project path\to\project --runs 100 --command ".\app.exe"
 turbobuild benchmark --project path\to\project --warmups 5 --runs 100 --command ".\app.exe"
+turbobuild benchmark --project path\to\project --format csv --command ".\app.exe"
 turbobuild optimize --project path\to\project --goal speed --benchmark-command ".\app.exe"
 turbobuild optimize --project path\to\project --goal size --benchmark-command ".\app.exe"
 turbobuild compare gcc clang --project path\to\project --benchmark-command ".\app.exe"
