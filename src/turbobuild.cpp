@@ -106,6 +106,7 @@ struct BenchmarkStats {
   double p99_ms = 0;
   double p999_ms = 0;
   double max_ms = 0;
+  double relative_stddev_percent = 0;
   double throughput_per_sec = 0;
 };
 
@@ -652,6 +653,7 @@ BenchmarkStats benchmark_command(const std::string &command, int runs, int warmu
   stats.p95_ms = percentile(samples, 95);
   stats.p99_ms = percentile(samples, 99);
   stats.p999_ms = percentile(samples, 99.9);
+  stats.relative_stddev_percent = stats.mean_ms > 0 ? (stats.stddev_ms / stats.mean_ms) * 100.0 : 0;
   stats.throughput_per_sec = stats.mean_ms > 0 ? 1000.0 / stats.mean_ms : 0;
   return stats;
 }
@@ -670,6 +672,7 @@ void write_benchmark_json(const fs::path &path, const std::string &name, const B
       << ", \"p50\": " << stats.p50_ms << ", \"p90\": " << stats.p90_ms << ", \"p95\": " << stats.p95_ms
       << ", \"p99\": " << stats.p99_ms << ", \"p99_9\": " << stats.p999_ms
       << ", \"max\": " << stats.max_ms << "},\n";
+  out << "  \"relative_stddev_percent\": " << stats.relative_stddev_percent << ",\n";
   out << "  \"throughput_per_sec\": " << stats.throughput_per_sec << ",\n";
   out << "  \"system_metrics\": {\"memory_usage\": null, \"allocation_count\": null, \"cpu_utilization\": null, \"context_switches\": null, \"page_faults\": null},\n";
   out << "  \"environment\": {\"fixed_seed\": null, \"input_data\": null, \"sanitizer_build\": false}\n";
@@ -684,6 +687,7 @@ void print_benchmark(const std::string &name, const BenchmarkStats &stats) {
             << " p50=" << stats.p50_ms << " p90=" << stats.p90_ms
             << " p95=" << stats.p95_ms << " p99=" << stats.p99_ms
             << " p99.9=" << stats.p999_ms
+            << " rel_stddev%=" << stats.relative_stddev_percent
             << " throughput/s=" << stats.throughput_per_sec << "\n";
 }
 
