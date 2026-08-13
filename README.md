@@ -32,6 +32,7 @@ automatically.
 ```powershell
 turbobuild analyze --project path\to\project
 turbobuild list-configs
+turbobuild explain-config gcc-o2
 turbobuild build --project path\to\project --config gcc-o2
 turbobuild test --project path\to\project
 turbobuild warnings --project path\to\project --strict

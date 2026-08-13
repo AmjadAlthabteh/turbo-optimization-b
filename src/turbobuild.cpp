@@ -1061,6 +1061,43 @@ int command_list_configs(const Options &options) {
   return 0;
 }
 
+int command_explain_config(const Options &options) {
+  const std::string name = !options.config.empty()
+      ? options.config
+      : (options.positional.empty() ? "" : options.positional.front());
+  if (name.empty()) {
+    std::cerr << "explain-config requires a config name, for example: turbobuild explain-config gcc-o2\n";
+    return 2;
+  }
+
+  auto compilers = detect_compilers();
+  auto configs = candidate_configs(options, compilers);
+  auto config = select_config(configs, name);
+  if (!config) {
+    std::cerr << "unknown or unsupported config: " << name << "\n";
+    std::cerr << "run 'turbobuild list-configs' to see configs supported on this machine\n";
+    return 2;
+  }
+
+  std::cout << "Config: " << config->name << "\n";
+  std::cout << "  Compiler: " << config->compiler_id << "\n";
+  std::cout << "  Flags:";
+  for (const auto &flag : config->flags) std::cout << " " << flag;
+  std::cout << "\n";
+  std::cout << "  Safety: " << (config->unsafe ? "explicit opt-in required" : "safe default candidate") << "\n";
+  if (!config->safety_note.empty()) std::cout << "  Note: " << config->safety_note << "\n";
+  if (config->name.find("o0") != std::string::npos || config->name.find("og") != std::string::npos) {
+    std::cout << "  Best for: debug builds and baseline correctness checks\n";
+  } else if (config->name.find("os") != std::string::npos || config->name.find("oz") != std::string::npos) {
+    std::cout << "  Best for: binary-size experiments that still need benchmark validation\n";
+  } else if (config->name.find("lto") != std::string::npos) {
+    std::cout << "  Best for: whole-program optimization experiments with measured build-time and runtime tradeoffs\n";
+  } else {
+    std::cout << "  Best for: general runtime optimization experiments that should be compared with benchmarks\n";
+  }
+  return 0;
+}
+
 int command_build(const Options &options) {
   ProjectInfo info = analyze_project(options.project);
   auto compilers = detect_compilers();
@@ -1390,6 +1427,7 @@ void usage() {
       << "Commands:\n"
       << "  analyze [--project PATH]\n"
       << "  list-configs [--allow-ofast] [--allow-fast-math] [--allow-native]\n"
+      << "  explain-config NAME [--allow-ofast] [--allow-fast-math] [--allow-native]\n"
       << "  build [--project PATH] [--config gcc-o2]\n"
       << "  test [--project PATH] [--config gcc-o2]\n"
       << "  warnings [--project PATH] [gcc|clang] [--strict]\n"
@@ -1419,6 +1457,7 @@ int run_app(int argc, char **argv) {
     }
     if (options.command == "analyze") return command_analyze(options);
     if (options.command == "list-configs") return command_list_configs(options);
+    if (options.command == "explain-config") return command_explain_config(options);
     if (options.command == "build") return command_build(options);
     if (options.command == "test") return command_test(options);
     if (options.command == "warnings") return command_warnings(options);
