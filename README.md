@@ -49,6 +49,7 @@ turbobuild optimize --project path\to\project --goal size --benchmark-command ".
 turbobuild compare gcc clang --project path\to\project --benchmark-command ".\app.exe"
 turbobuild profile --project path\to\project
 turbobuild results --project path\to\project
+turbobuild results --project path\to\project --latest
 turbobuild report --project path\to\project --format html
 turbobuild report --project path\to\project --format markdown
 turbobuild doctor --project path\to\project

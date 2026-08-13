@@ -60,6 +60,7 @@ struct Options {
   bool strict = false;
   bool verbose = false;
   bool force = false;
+  bool latest = false;
   std::vector<std::string> positional;
 };
 
@@ -252,6 +253,7 @@ Options parse_args(int argc, char **argv) {
     else if (arg == "--strict") options.strict = true;
     else if (arg == "--verbose") options.verbose = true;
     else if (arg == "--force") options.force = true;
+    else if (arg == "--latest") options.latest = true;
     else options.positional.push_back(arg);
   }
   return options;
@@ -1312,6 +1314,17 @@ int command_results(const Options &options) {
     std::cout << "No TurboBuild result files found at " << dir << "\n";
     return 0;
   }
+  if (options.latest) {
+    auto latest = std::max_element(files.begin(), files.end(), [](const auto &a, const auto &b) {
+      std::error_code ignored_a;
+      std::error_code ignored_b;
+      return a.last_write_time(ignored_a) < b.last_write_time(ignored_b);
+    });
+    std::error_code ignored;
+    std::cout << "Latest TurboBuild result: " << latest->path()
+              << " (" << latest->file_size(ignored) << " bytes)\n";
+    return 0;
+  }
   std::cout << "TurboBuild results in " << dir << ":\n";
   std::error_code ignored;
   for (const auto &entry : files) {
@@ -1453,7 +1466,7 @@ void usage() {
       << "  profile [--command CMD] [--runs N] [--warmups N]\n"
       << "  optimize --goal speed|size|balanced [--benchmark-command CMD] [--runs N]\n"
       << "  compare gcc clang [--benchmark-command CMD] [--runs N]\n"
-      << "  results [--project PATH]\n"
+      << "  results [--project PATH] [--latest]\n"
       << "  report [--format json|html|markdown]\n"
       << "  doctor [--project PATH] [--min-score N]\n"
       << "  init-ci [--project PATH] [--force]\n"
