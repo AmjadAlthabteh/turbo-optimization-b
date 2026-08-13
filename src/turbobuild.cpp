@@ -177,6 +177,10 @@ std::string trim(std::string s) {
   return s;
 }
 
+bool is_one_of(const std::string &value, const std::vector<std::string> &allowed) {
+  return std::find(allowed.begin(), allowed.end(), value) != allowed.end();
+}
+
 bool contains_case_insensitive(std::string haystack, std::string needle) {
   std::transform(haystack.begin(), haystack.end(), haystack.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
   std::transform(needle.begin(), needle.end(), needle.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -1060,6 +1064,7 @@ int command_test(const Options &options) {
 }
 
 int command_benchmark(const Options &options) {
+  if (!is_one_of(options.format, {"json", "csv"})) throw std::runtime_error("benchmark --format must be json or csv");
   BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
   print_benchmark("benchmark", stats);
   write_benchmark_json(result_dir(options) / "benchmark.json", "benchmark", options.benchmark_command, stats);
@@ -1071,6 +1076,7 @@ int command_benchmark(const Options &options) {
 }
 
 int command_optimize(const Options &options) {
+  if (!is_one_of(options.goal, {"speed", "size", "balanced"})) throw std::runtime_error("--goal must be speed, size, or balanced");
   ProjectInfo info = analyze_project(options.project);
   auto compilers = detect_compilers();
   auto configs = filter_goal(candidate_configs(options, compilers), options.goal);
@@ -1165,6 +1171,7 @@ int command_profile(const Options &options) {
 }
 
 int command_report(const Options &options) {
+  if (!is_one_of(options.format, {"json", "html"})) throw std::runtime_error("report --format must be json or html");
   fs::create_directories(result_dir(options));
   if (options.format == "html") {
     fs::path report = result_dir(options) / "report.html";
