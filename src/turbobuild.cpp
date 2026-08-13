@@ -34,6 +34,8 @@ namespace fs = std::filesystem;
 
 namespace {
 
+constexpr const char *kVersion = "0.1.0";
+
 // Core data models
 
 struct CommandResult {
@@ -1045,6 +1047,20 @@ int command_analyze(const Options &options) {
   return 0;
 }
 
+int command_version(const Options &options) {
+  if (!is_one_of(options.format, {"text", "json"})) throw std::runtime_error("version --format must be text or json");
+  if (options.format == "json") {
+    std::cout << "{\n";
+    std::cout << "  \"name\": \"TurboBuild\",\n";
+    std::cout << "  \"version\": \"" << kVersion << "\",\n";
+    std::cout << "  \"cxx_standard\": \"C++17\"\n";
+    std::cout << "}\n";
+  } else {
+    std::cout << "TurboBuild " << kVersion << " (C++17)\n";
+  }
+  return 0;
+}
+
 int command_list_configs(const Options &options) {
   auto compilers = detect_compilers();
   auto configs = candidate_configs(options, compilers);
@@ -1452,8 +1468,9 @@ int command_init_ci(const Options &options) {
 
 void usage() {
   std::cout
-      << "TurboBuild " << "0.1.0" << "\n"
+      << "TurboBuild " << kVersion << "\n"
       << "Commands:\n"
+      << "  version [--format text|json]\n"
       << "  analyze [--project PATH]\n"
       << "  list-configs [--allow-ofast] [--allow-fast-math] [--allow-native]\n"
       << "  explain-config NAME [--allow-ofast] [--allow-fast-math] [--allow-native]\n"
@@ -1484,6 +1501,7 @@ int run_app(int argc, char **argv) {
       usage();
       return 0;
     }
+    if (options.command == "version" || options.command == "--version") return command_version(options);
     if (options.command == "analyze") return command_analyze(options);
     if (options.command == "list-configs") return command_list_configs(options);
     if (options.command == "explain-config") return command_explain_config(options);

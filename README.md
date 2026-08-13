@@ -30,6 +30,8 @@ automatically.
 ## Commands
 
 ```powershell
+turbobuild version
+turbobuild version --format json
 turbobuild analyze --project path\to\project
 turbobuild list-configs
 turbobuild explain-config gcc-o2
