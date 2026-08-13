@@ -108,6 +108,7 @@ struct BenchmarkStats {
   double max_ms = 0;
   double relative_stddev_percent = 0;
   double throughput_per_sec = 0;
+  std::vector<double> samples_ms;
 };
 
 struct WarningIssue {
@@ -647,6 +648,7 @@ BenchmarkStats benchmark_command(const std::string &command, int runs, int warmu
     samples.push_back(ms);
   }
   std::sort(samples.begin(), samples.end());
+  stats.samples_ms = samples;
   stats.min_ms = samples.front();
   stats.max_ms = samples.back();
   stats.mean_ms = std::accumulate(samples.begin(), samples.end(), 0.0) / static_cast<double>(samples.size());
@@ -682,6 +684,11 @@ void write_benchmark_json(const fs::path &path, const std::string &name, const s
   out << "  \"relative_stddev_percent\": " << stats.relative_stddev_percent << ",\n";
   out << "  \"stability\": \"" << benchmark_stability_label(stats.relative_stddev_percent) << "\",\n";
   out << "  \"throughput_per_sec\": " << stats.throughput_per_sec << ",\n";
+  out << "  \"samples_ms\": [";
+  for (size_t i = 0; i < stats.samples_ms.size(); ++i) {
+    out << (i ? ", " : "") << stats.samples_ms[i];
+  }
+  out << "],\n";
   out << "  \"system_metrics\": {\"memory_usage\": null, \"allocation_count\": null, \"cpu_utilization\": null, \"context_switches\": null, \"page_faults\": null},\n";
   out << "  \"environment\": {\"fixed_seed\": null, \"input_data\": null, \"sanitizer_build\": false}\n";
   out << "}\n";
