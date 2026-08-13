@@ -664,12 +664,13 @@ BenchmarkStats benchmark_command(const std::string &command, int runs, int warmu
   return stats;
 }
 
-void write_benchmark_json(const fs::path &path, const std::string &name, const BenchmarkStats &stats) {
+void write_benchmark_json(const fs::path &path, const std::string &name, const std::string &command, const BenchmarkStats &stats) {
   fs::create_directories(path.parent_path());
   std::ofstream out(path);
   out << std::fixed << std::setprecision(3);
   out << "{\n";
   out << "  \"name\": \"" << json_escape(name) << "\",\n";
+  out << "  \"command\": \"" << json_escape(command) << "\",\n";
   out << "  \"runs\": " << stats.runs << ",\n";
   out << "  \"warmups\": " << stats.warmups << ",\n";
   out << "  \"failures\": " << stats.failures << ",\n";
@@ -1044,7 +1045,7 @@ int command_test(const Options &options) {
 int command_benchmark(const Options &options) {
   BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
   print_benchmark("benchmark", stats);
-  write_benchmark_json(result_dir(options) / "benchmark.json", "benchmark", stats);
+  write_benchmark_json(result_dir(options) / "benchmark.json", "benchmark", options.benchmark_command, stats);
   return stats.failures == 0 ? 0 : 1;
 }
 
@@ -1070,7 +1071,7 @@ int command_optimize(const Options &options) {
     }
     BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
     print_benchmark(config.name, stats);
-    write_benchmark_json(result_dir(options) / (config.name + ".json"), config.name, stats);
+    write_benchmark_json(result_dir(options) / (config.name + ".json"), config.name, options.benchmark_command, stats);
     measured.push_back({config, stats});
   }
 
@@ -1112,7 +1113,7 @@ int command_compare(const Options &options) {
     if (!options.benchmark_command.empty()) {
       auto stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
       print_benchmark(config.name, stats);
-      write_benchmark_json(result_dir(options) / (config.name + ".json"), config.name, stats);
+      write_benchmark_json(result_dir(options) / (config.name + ".json"), config.name, options.benchmark_command, stats);
     }
   }
   if (options.benchmark_command.empty()) std::cout << "Comparison builds completed where supported; no benchmark command supplied.\n";
