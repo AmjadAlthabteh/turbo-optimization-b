@@ -52,6 +52,7 @@ turbobuild results --project path\to\project
 turbobuild report --project path\to\project --format html
 turbobuild report --project path\to\project --format markdown
 turbobuild doctor --project path\to\project
+turbobuild doctor --project path\to\project --min-score 70
 turbobuild init-ci --project path\to\project
 ```
 

@@ -53,6 +53,7 @@ struct Options {
   int warmups = 0;
   double max_noise_percent = 0;
   double budget_ms = 0;
+  int min_score = -1;
   bool allow_ofast = false;
   bool allow_fast_math = false;
   bool allow_native = false;
@@ -243,6 +244,7 @@ Options parse_args(int argc, char **argv) {
     else if (arg == "--warmups") options.warmups = std::stoi(need_value(arg));
     else if (arg == "--max-noise") options.max_noise_percent = std::stod(need_value(arg));
     else if (arg == "--budget-ms") options.budget_ms = std::stod(need_value(arg));
+    else if (arg == "--min-score") options.min_score = std::stoi(need_value(arg));
     else if (arg == "--command" || arg == "--benchmark-command") options.benchmark_command = need_value(arg);
     else if (arg == "--allow-ofast") options.allow_ofast = true;
     else if (arg == "--allow-fast-math") options.allow_fast_math = true;
@@ -1320,6 +1322,7 @@ int command_results(const Options &options) {
 }
 
 int command_doctor(const Options &options) {
+  if (options.min_score > 100) throw std::runtime_error("--min-score cannot be greater than 100");
   ProjectInfo info = analyze_project(options.project);
   auto compilers = detect_compilers();
   auto tools = detect_analysis_tools();
@@ -1384,6 +1387,11 @@ int command_doctor(const Options &options) {
   std::cout << "  Next steps:\n";
   for (const auto &recommendation : recommendations) std::cout << "    - " << recommendation << "\n";
   std::cout << "Wrote " << (result_dir(options) / "doctor.json") << "\n";
+  if (options.min_score >= 0 && readiness_score < options.min_score) {
+    std::cerr << "readiness score " << readiness_score
+              << " is below --min-score " << options.min_score << "\n";
+    return 1;
+  }
   return configs.empty() ? 1 : 0;
 }
 
@@ -1447,7 +1455,7 @@ void usage() {
       << "  compare gcc clang [--benchmark-command CMD] [--runs N]\n"
       << "  results [--project PATH]\n"
       << "  report [--format json|html|markdown]\n"
-      << "  doctor [--project PATH]\n"
+      << "  doctor [--project PATH] [--min-score N]\n"
       << "  init-ci [--project PATH] [--force]\n"
       << "Safety opt-ins: --allow-ofast --allow-fast-math --allow-native\n";
 }
