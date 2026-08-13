@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <cctype>
+#include <ctime>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -179,6 +180,13 @@ std::string trim(std::string s) {
 
 bool is_one_of(const std::string &value, const std::vector<std::string> &allowed) {
   return std::find(allowed.begin(), allowed.end(), value) != allowed.end();
+}
+
+std::string current_timestamp() {
+  const auto now = std::chrono::system_clock::now();
+  const std::time_t time = std::chrono::system_clock::to_time_t(now);
+  std::string text = std::ctime(&time);
+  return trim(text);
 }
 
 bool contains_case_insensitive(std::string haystack, std::string needle) {
@@ -676,6 +684,7 @@ void write_benchmark_json(const fs::path &path, const std::string &name, const s
   out << std::fixed << std::setprecision(3);
   out << "{\n";
   out << "  \"name\": \"" << json_escape(name) << "\",\n";
+  out << "  \"generated_at\": \"" << json_escape(current_timestamp()) << "\",\n";
   out << "  \"command\": \"" << json_escape(command) << "\",\n";
   out << "  \"runs\": " << stats.runs << ",\n";
   out << "  \"warmups\": " << stats.warmups << ",\n";
@@ -1179,6 +1188,7 @@ int command_report(const Options &options) {
     out << "<!doctype html><meta charset=\"utf-8\"><title>TurboBuild Report</title>";
     out << "<style>body{font-family:system-ui,Segoe UI,sans-serif;margin:40px;line-height:1.45}code,pre{background:#f3f4f6;padding:2px 4px;border-radius:4px}li{margin:6px 0}</style>";
     out << "<h1>TurboBuild Report</h1><p>Project: <code>" << json_escape(fs::absolute(options.project).string()) << "</code></p>";
+    out << "<p>Generated: <code>" << json_escape(current_timestamp()) << "</code></p>";
     out << "<h2>Result Files</h2><ul>";
     if (fs::exists(result_dir(options))) {
       std::error_code ignored;
