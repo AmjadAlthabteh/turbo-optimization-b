@@ -48,6 +48,7 @@ turbobuild compare gcc clang --project path\to\project --benchmark-command ".\ap
 turbobuild profile --project path\to\project
 turbobuild results --project path\to\project
 turbobuild report --project path\to\project --format html
+turbobuild report --project path\to\project --format markdown
 turbobuild doctor --project path\to\project
 turbobuild init-ci --project path\to\project
 ```

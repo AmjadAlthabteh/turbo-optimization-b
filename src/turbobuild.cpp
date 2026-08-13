@@ -1201,7 +1201,7 @@ int command_profile(const Options &options) {
 }
 
 int command_report(const Options &options) {
-  if (!is_one_of(options.format, {"json", "html"})) throw std::runtime_error("report --format must be json or html");
+  if (!is_one_of(options.format, {"json", "html", "markdown"})) throw std::runtime_error("report --format must be json, html, or markdown");
   fs::create_directories(result_dir(options));
   if (options.format == "html") {
     fs::path report = result_dir(options) / "report.html";
@@ -1221,6 +1221,26 @@ int command_report(const Options &options) {
       }
     }
     out << "</ul><p>TurboBuild only claims improvements when benchmark files contain before-and-after measurements.</p>";
+    std::cout << "Wrote " << report << "\n";
+  } else if (options.format == "markdown") {
+    fs::path report = result_dir(options) / "report.md";
+    std::ofstream out(report);
+    out << "# TurboBuild Report\n\n";
+    out << "- Project: `" << json_escape(fs::absolute(options.project).string()) << "`\n";
+    out << "- Generated: `" << json_escape(current_timestamp()) << "`\n\n";
+    out << "## Result Files\n\n";
+    out << "| File | Size |\n";
+    out << "| --- | ---: |\n";
+    if (fs::exists(result_dir(options))) {
+      std::error_code ignored;
+      for (const auto &entry : fs::directory_iterator(result_dir(options))) {
+        if (entry.is_regular_file()) {
+          out << "| `" << json_escape(entry.path().filename().string()) << "` | "
+              << entry.file_size(ignored) << " bytes |\n";
+        }
+      }
+    }
+    out << "\nTurboBuild only claims improvements when benchmark files contain before-and-after measurements.\n";
     std::cout << "Wrote " << report << "\n";
   } else {
     std::cout << "JSON results are stored in " << result_dir(options) << "\n";
@@ -1367,7 +1387,7 @@ void usage() {
       << "  optimize --goal speed|size|balanced [--benchmark-command CMD] [--runs N]\n"
       << "  compare gcc clang [--benchmark-command CMD] [--runs N]\n"
       << "  results [--project PATH]\n"
-      << "  report [--format json|html]\n"
+      << "  report [--format json|html|markdown]\n"
       << "  doctor [--project PATH]\n"
       << "  init-ci [--project PATH] [--force]\n"
       << "Safety opt-ins: --allow-ofast --allow-fast-math --allow-native\n";
