@@ -620,6 +620,12 @@ double percentile(const std::vector<double> &sorted, double p) {
   return sorted[low] * (1.0 - weight) + sorted[high] * weight;
 }
 
+std::string benchmark_stability_label(double relative_stddev_percent) {
+  if (relative_stddev_percent <= 5.0) return "stable";
+  if (relative_stddev_percent <= 15.0) return "moderate";
+  return "noisy";
+}
+
 BenchmarkStats benchmark_command(const std::string &command, int runs, int warmups) {
   if (command.empty()) throw std::runtime_error("benchmark command is required; pass --benchmark-command or --command");
   if (runs <= 0) throw std::runtime_error("--runs must be greater than zero");
@@ -673,6 +679,7 @@ void write_benchmark_json(const fs::path &path, const std::string &name, const B
       << ", \"p99\": " << stats.p99_ms << ", \"p99_9\": " << stats.p999_ms
       << ", \"max\": " << stats.max_ms << "},\n";
   out << "  \"relative_stddev_percent\": " << stats.relative_stddev_percent << ",\n";
+  out << "  \"stability\": \"" << benchmark_stability_label(stats.relative_stddev_percent) << "\",\n";
   out << "  \"throughput_per_sec\": " << stats.throughput_per_sec << ",\n";
   out << "  \"system_metrics\": {\"memory_usage\": null, \"allocation_count\": null, \"cpu_utilization\": null, \"context_switches\": null, \"page_faults\": null},\n";
   out << "  \"environment\": {\"fixed_seed\": null, \"input_data\": null, \"sanitizer_build\": false}\n";
@@ -688,6 +695,7 @@ void print_benchmark(const std::string &name, const BenchmarkStats &stats) {
             << " p95=" << stats.p95_ms << " p99=" << stats.p99_ms
             << " p99.9=" << stats.p999_ms
             << " rel_stddev%=" << stats.relative_stddev_percent
+            << " stability=" << benchmark_stability_label(stats.relative_stddev_percent)
             << " throughput/s=" << stats.throughput_per_sec << "\n";
 }
 
