@@ -1279,12 +1279,28 @@ int command_doctor(const Options &options) {
   auto compilers = detect_compilers();
   auto tools = detect_analysis_tools();
   auto configs = candidate_configs(options, compilers);
+  const bool has_build_system = info.has_cmake || info.has_make || info.has_ninja;
+  const bool has_compiler_configs = !configs.empty();
+  const int readiness_score =
+      (has_build_system ? 25 : 0) +
+      (has_compiler_configs ? 25 : 0) +
+      (info.has_tests ? 20 : 0) +
+      (info.has_benchmarks ? 20 : 0) +
+      (!tools.empty() ? 10 : 0);
+
+  std::vector<std::string> recommendations;
+  if (!has_build_system) recommendations.push_back("Add a supported build system so TurboBuild can create isolated builds.");
+  if (!has_compiler_configs) recommendations.push_back("Install GCC or Clang so TurboBuild can probe optimization configurations.");
+  if (!info.has_tests) recommendations.push_back("Add tests or pass --command to sanitizer runs so correctness checks can execute.");
+  if (!info.has_benchmarks) recommendations.push_back("Add a benchmark target or provide --benchmark-command before trusting optimization decisions.");
+  if (recommendations.empty()) recommendations.push_back("Project is ready for analyze, build, warnings, and measured optimize workflows.");
 
   fs::create_directories(result_dir(options));
   std::ofstream out(result_dir(options) / "doctor.json");
   out << "{\n";
   out << "  \"project\": \"" << json_escape(info.root.string()) << "\",\n";
-  out << "  \"status\": \"" << (!configs.empty() && (info.has_cmake || info.has_make || info.has_ninja) ? "ready" : "needs_attention") << "\",\n";
+  out << "  \"status\": \"" << (has_compiler_configs && has_build_system ? "ready" : "needs_attention") << "\",\n";
+  out << "  \"readiness_score\": " << readiness_score << ",\n";
   out << "  \"build_systems\": {\"cmake\": " << (info.has_cmake ? "true" : "false")
       << ", \"make\": " << (info.has_make ? "true" : "false")
       << ", \"ninja\": " << (info.has_ninja ? "true" : "false") << "},\n";
@@ -1305,26 +1321,23 @@ int command_doctor(const Options &options) {
   }
   out << "  ],\n";
   out << "  \"recommendations\": [\n";
-  bool wrote = false;
-  auto add_recommendation = [&](const std::string &text) {
-    if (wrote) out << ",\n";
-    out << "    \"" << json_escape(text) << "\"";
-    wrote = true;
-  };
-  if (!info.has_cmake && !info.has_make && !info.has_ninja) add_recommendation("Add a supported build system so TurboBuild can create isolated builds.");
-  if (configs.empty()) add_recommendation("Install GCC or Clang so TurboBuild can probe optimization configurations.");
-  if (!info.has_tests) add_recommendation("Add tests or pass --command to sanitizer runs so correctness checks can execute.");
-  if (!info.has_benchmarks) add_recommendation("Add a benchmark target or provide --benchmark-command before trusting optimization decisions.");
-  if (!wrote) add_recommendation("Project is ready for analyze, build, warnings, and measured optimize workflows.");
-  out << "\n  ]\n";
+  for (size_t i = 0; i < recommendations.size(); ++i) {
+    out << "    \"" << json_escape(recommendations[i]) << "\"";
+    if (i + 1 < recommendations.size()) out << ",";
+    out << "\n";
+  }
+  out << "  ]\n";
   out << "}\n";
 
   std::cout << "TurboBuild doctor\n";
   std::cout << "  Project: " << info.root << "\n";
   std::cout << "  Build system: " << (info.has_cmake ? "CMake " : "") << (info.has_make ? "Make " : "") << (info.has_ninja ? "Ninja " : "") << "\n";
   std::cout << "  Sources: " << info.sources.size() << ", headers: " << info.headers.size() << "\n";
+  std::cout << "  Readiness score: " << readiness_score << "/100\n";
   std::cout << "  Supported configs: " << configs.size() << "\n";
   std::cout << "  Tests detected: " << (info.has_tests ? "yes" : "no") << ", benchmarks detected: " << (info.has_benchmarks ? "yes" : "no") << "\n";
+  std::cout << "  Next steps:\n";
+  for (const auto &recommendation : recommendations) std::cout << "    - " << recommendation << "\n";
   std::cout << "Wrote " << (result_dir(options) / "doctor.json") << "\n";
   return configs.empty() ? 1 : 0;
 }
