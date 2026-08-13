@@ -52,6 +52,7 @@ struct Options {
   int runs = 10;
   int warmups = 0;
   double max_noise_percent = 0;
+  double budget_ms = 0;
   bool allow_ofast = false;
   bool allow_fast_math = false;
   bool allow_native = false;
@@ -241,6 +242,7 @@ Options parse_args(int argc, char **argv) {
     else if (arg == "--runs") options.runs = std::stoi(need_value(arg));
     else if (arg == "--warmups") options.warmups = std::stoi(need_value(arg));
     else if (arg == "--max-noise") options.max_noise_percent = std::stod(need_value(arg));
+    else if (arg == "--budget-ms") options.budget_ms = std::stod(need_value(arg));
     else if (arg == "--command" || arg == "--benchmark-command") options.benchmark_command = need_value(arg);
     else if (arg == "--allow-ofast") options.allow_ofast = true;
     else if (arg == "--allow-fast-math") options.allow_fast_math = true;
@@ -1125,6 +1127,7 @@ int command_test(const Options &options) {
 int command_benchmark(const Options &options) {
   if (!is_one_of(options.format, {"json", "csv"})) throw std::runtime_error("benchmark --format must be json or csv");
   if (options.max_noise_percent < 0.0) throw std::runtime_error("--max-noise cannot be negative");
+  if (options.budget_ms < 0.0) throw std::runtime_error("--budget-ms cannot be negative");
   const std::string name = options.label.empty() ? "benchmark" : options.label;
   const fs::path base = result_dir(options) / safe_filename(name);
   BenchmarkStats stats = benchmark_command(options.benchmark_command, options.runs, options.warmups);
@@ -1137,6 +1140,11 @@ int command_benchmark(const Options &options) {
   if (options.max_noise_percent > 0.0 && stats.relative_stddev_percent > options.max_noise_percent) {
     std::cerr << "benchmark noise " << stats.relative_stddev_percent
               << "% exceeded --max-noise " << options.max_noise_percent << "%\n";
+    return 1;
+  }
+  if (options.budget_ms > 0.0 && stats.mean_ms > options.budget_ms) {
+    std::cerr << "benchmark mean " << stats.mean_ms
+              << " ms exceeded --budget-ms " << options.budget_ms << " ms\n";
     return 1;
   }
   return stats.failures == 0 ? 0 : 1;
@@ -1433,7 +1441,7 @@ void usage() {
       << "  warnings [--project PATH] [gcc|clang] [--strict]\n"
       << "  sanitize [--project PATH] [gcc|clang] [--command CMD]\n"
       << "  static-analysis [--project PATH]\n"
-      << "  benchmark --command CMD [--runs N] [--warmups N] [--label NAME] [--max-noise PCT] [--format json|csv]\n"
+      << "  benchmark --command CMD [--runs N] [--warmups N] [--label NAME] [--max-noise PCT] [--budget-ms N] [--format json|csv]\n"
       << "  profile [--command CMD] [--runs N] [--warmups N]\n"
       << "  optimize --goal speed|size|balanced [--benchmark-command CMD] [--runs N]\n"
       << "  compare gcc clang [--benchmark-command CMD] [--runs N]\n"
