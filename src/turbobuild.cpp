@@ -1181,8 +1181,12 @@ int command_report(const Options &options) {
     out << "<h1>TurboBuild Report</h1><p>Project: <code>" << json_escape(fs::absolute(options.project).string()) << "</code></p>";
     out << "<h2>Result Files</h2><ul>";
     if (fs::exists(result_dir(options))) {
+      std::error_code ignored;
       for (const auto &entry : fs::directory_iterator(result_dir(options))) {
-        if (entry.is_regular_file()) out << "<li><code>" << json_escape(entry.path().filename().string()) << "</code></li>";
+        if (entry.is_regular_file()) {
+          out << "<li><code>" << json_escape(entry.path().filename().string()) << "</code> "
+              << entry.file_size(ignored) << " bytes</li>";
+        }
       }
     }
     out << "</ul><p>TurboBuild only claims improvements when benchmark files contain before-and-after measurements.</p>";
