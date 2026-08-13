@@ -983,6 +983,28 @@ int command_analyze(const Options &options) {
   return 0;
 }
 
+int command_list_configs(const Options &options) {
+  auto compilers = detect_compilers();
+  auto configs = candidate_configs(options, compilers);
+  if (configs.empty()) {
+    std::cerr << "no supported compiler configurations found\n";
+    return 1;
+  }
+  std::cout << "Supported optimization configs:\n";
+  for (const auto &config : configs) {
+    std::cout << "  " << config.name << " (" << config.compiler_id << ")";
+    if (!config.flags.empty()) {
+      std::cout << " flags=";
+      for (size_t i = 0; i < config.flags.size(); ++i) {
+        std::cout << (i ? "," : "") << config.flags[i];
+      }
+    }
+    if (config.unsafe) std::cout << " unsafe: " << config.safety_note;
+    std::cout << "\n";
+  }
+  return 0;
+}
+
 int command_build(const Options &options) {
   ProjectInfo info = analyze_project(options.project);
   auto compilers = detect_compilers();
@@ -1232,6 +1254,7 @@ void usage() {
       << "TurboBuild " << "0.1.0" << "\n"
       << "Commands:\n"
       << "  analyze [--project PATH]\n"
+      << "  list-configs [--allow-ofast] [--allow-fast-math] [--allow-native]\n"
       << "  build [--project PATH] [--config gcc-o2]\n"
       << "  test [--project PATH] [--config gcc-o2]\n"
       << "  warnings [--project PATH] [gcc|clang] [--strict]\n"
@@ -1259,6 +1282,7 @@ int run_app(int argc, char **argv) {
       return 0;
     }
     if (options.command == "analyze") return command_analyze(options);
+    if (options.command == "list-configs") return command_list_configs(options);
     if (options.command == "build") return command_build(options);
     if (options.command == "test") return command_test(options);
     if (options.command == "warnings") return command_warnings(options);
