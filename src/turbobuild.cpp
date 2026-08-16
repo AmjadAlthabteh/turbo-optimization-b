@@ -676,6 +676,7 @@ BenchmarkStats benchmark_command(const std::string &command, int runs, int warmu
   if (runs <= 0) throw std::runtime_error("--runs must be greater than zero");
   if (warmups < 0) throw std::runtime_error("--warmups cannot be negative");
   std::vector<double> samples;
+  samples.reserve(static_cast<size_t>(runs));
   BenchmarkStats stats;
   stats.runs = runs;
   stats.warmups = warmups;
