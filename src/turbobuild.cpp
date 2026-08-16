@@ -384,6 +384,10 @@ ProjectInfo analyze_project(const fs::path &root) {
 
   const std::set<std::string> source_exts{".c", ".cc", ".cpp", ".cxx", ".C"};
   const std::set<std::string> header_exts{".h", ".hh", ".hpp", ".hxx"};
+  info.sources.reserve(64);
+  info.headers.reserve(64);
+  info.generated_sources.reserve(8);
+  info.build_outputs.reserve(32);
   for (const auto &entry : fs::recursive_directory_iterator(root, fs::directory_options::skip_permission_denied)) {
     if (!entry.is_regular_file()) continue;
     const fs::path path = entry.path();
