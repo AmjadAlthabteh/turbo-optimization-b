@@ -18,6 +18,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #ifdef _WIN32
@@ -196,10 +197,14 @@ std::string current_timestamp() {
   return trim(text);
 }
 
-bool contains_case_insensitive(std::string haystack, std::string needle) {
-  std::transform(haystack.begin(), haystack.end(), haystack.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-  std::transform(needle.begin(), needle.end(), needle.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-  return haystack.find(needle) != std::string::npos;
+std::string lower_copy(std::string_view value) {
+  std::string lowered(value);
+  std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return lowered;
+}
+
+bool contains_case_insensitive(std::string_view haystack, std::string_view needle) {
+  return lower_copy(haystack).find(lower_copy(needle)) != std::string::npos;
 }
 
 std::string safe_filename(std::string value) {
