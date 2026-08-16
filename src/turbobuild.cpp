@@ -223,8 +223,7 @@ bool is_build_or_metadata_path(const fs::path &root, const fs::path &path) {
   fs::path rel = fs::relative(path, root, ignored);
   if (ignored) rel = path;
   for (const auto &part_path : rel) {
-    std::string part = part_path.string();
-    std::transform(part.begin(), part.end(), part.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    const std::string part = lower_copy(part_path.string());
     if (part == ".git" || part == ".turbobuild" || part == "cmakefiles" ||
         part == "build" || part.rfind("build-", 0) == 0 || part == "out" ||
         part == "dist" || part == "bin" || part == "obj") {
