@@ -19,6 +19,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #ifdef _WIN32
@@ -693,7 +694,6 @@ BenchmarkStats benchmark_command(const std::string &command, int runs, int warmu
     samples.push_back(ms);
   }
   std::sort(samples.begin(), samples.end());
-  stats.samples_ms = samples;
   stats.min_ms = samples.front();
   stats.max_ms = samples.back();
   stats.mean_ms = std::accumulate(samples.begin(), samples.end(), 0.0) / static_cast<double>(samples.size());
@@ -708,6 +708,7 @@ BenchmarkStats benchmark_command(const std::string &command, int runs, int warmu
   stats.p999_ms = percentile(samples, 99.9);
   stats.relative_stddev_percent = stats.mean_ms > 0 ? (stats.stddev_ms / stats.mean_ms) * 100.0 : 0;
   stats.throughput_per_sec = stats.mean_ms > 0 ? 1000.0 / stats.mean_ms : 0;
+  stats.samples_ms = std::move(samples);
   return stats;
 }
 
