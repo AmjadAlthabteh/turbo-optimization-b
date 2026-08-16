@@ -479,6 +479,7 @@ std::vector<Compiler> detect_compilers() {
 
 std::vector<BuildConfig> candidate_configs(const Options &options, const std::vector<Compiler> &compilers) {
   std::vector<BuildConfig> configs;
+  configs.reserve(compilers.size() * 11);
   const std::vector<std::string> base_flags = {"-O0", "-Og", "-O1", "-O2", "-O3", "-Os", "-Oz"};
   for (const auto &compiler : compilers) {
     if (!compiler.available) continue;
