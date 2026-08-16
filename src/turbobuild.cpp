@@ -388,6 +388,7 @@ ProjectInfo analyze_project(const fs::path &root) {
     if (!entry.is_regular_file()) continue;
     const fs::path path = entry.path();
     const std::string path_text = path.string();
+    const std::string lowered_path = lower_copy(path_text);
     const std::string ext = path.extension().string();
     if (is_build_or_metadata_path(root, path)) {
       if (source_exts.count(ext) || ext == ".o" || ext == ".obj" || ext == ".a" || ext == ".lib" || ext == ".exe") {
@@ -399,13 +400,13 @@ ProjectInfo analyze_project(const fs::path &root) {
       info.sources.push_back(path);
       if (ext == ".c") info.has_c = true;
       else info.has_cpp = true;
-      if (contains_case_insensitive(path_text, "generated") || contains_case_insensitive(path_text, "autogen")) info.generated_sources.push_back(path);
-      if (contains_case_insensitive(path_text, "test")) info.has_tests = true;
-      if (contains_case_insensitive(path_text, "bench")) info.has_benchmarks = true;
+      if (lowered_path.find("generated") != std::string::npos || lowered_path.find("autogen") != std::string::npos) info.generated_sources.push_back(path);
+      if (lowered_path.find("test") != std::string::npos) info.has_tests = true;
+      if (lowered_path.find("bench") != std::string::npos) info.has_benchmarks = true;
     } else if (header_exts.count(ext)) {
       info.headers.push_back(path);
     }
-    if (contains_case_insensitive(path_text, "build") || contains_case_insensitive(path_text, "out")) {
+    if (lowered_path.find("build") != std::string::npos || lowered_path.find("out") != std::string::npos) {
       if (source_exts.count(ext) || ext == ".o" || ext == ".obj" || ext == ".a" || ext == ".lib" || ext == ".exe") {
         info.build_outputs.push_back(path);
       }
