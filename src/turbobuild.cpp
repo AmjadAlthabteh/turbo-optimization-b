@@ -279,18 +279,19 @@ fs::path builds_dir(const Options &options) {
 }
 
 std::string json_escape(const std::string &s) {
-  std::ostringstream out;
+  std::string out;
+  out.reserve(s.size());
   for (char ch : s) {
     switch (ch) {
-      case '\\': out << "\\\\"; break;
-      case '"': out << "\\\""; break;
-      case '\n': out << "\\n"; break;
-      case '\r': out << "\\r"; break;
-      case '\t': out << "\\t"; break;
-      default: out << ch; break;
+      case '\\': out += "\\\\"; break;
+      case '"': out += "\\\""; break;
+      case '\n': out += "\\n"; break;
+      case '\r': out += "\\r"; break;
+      case '\t': out += "\\t"; break;
+      default: out += ch; break;
     }
   }
-  return out.str();
+  return out;
 }
 
 // Diagnostics and tool discovery
