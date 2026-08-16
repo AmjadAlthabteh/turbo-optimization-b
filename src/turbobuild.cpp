@@ -204,10 +204,6 @@ std::string lower_copy(std::string_view value) {
   return lowered;
 }
 
-bool contains_case_insensitive(std::string_view haystack, std::string_view needle) {
-  return lower_copy(haystack).find(lower_copy(needle)) != std::string::npos;
-}
-
 std::string safe_filename(std::string value) {
   if (value.empty()) return "benchmark";
   for (char &ch : value) {
@@ -1515,23 +1511,29 @@ int run_app(int argc, char **argv) {
       usage();
       return 0;
     }
-    if (options.command == "version" || options.command == "--version") return command_version(options);
-    if (options.command == "analyze") return command_analyze(options);
-    if (options.command == "list-configs") return command_list_configs(options);
-    if (options.command == "explain-config") return command_explain_config(options);
-    if (options.command == "build") return command_build(options);
-    if (options.command == "test") return command_test(options);
-    if (options.command == "warnings") return command_warnings(options);
-    if (options.command == "sanitize") return command_sanitize(options);
-    if (options.command == "static-analysis") return command_static_analysis(options);
-    if (options.command == "benchmark") return command_benchmark(options);
-    if (options.command == "profile") return command_profile(options);
-    if (options.command == "optimize") return command_optimize(options);
-    if (options.command == "compare") return command_compare(options);
-    if (options.command == "results") return command_results(options);
-    if (options.command == "report") return command_report(options);
-    if (options.command == "doctor") return command_doctor(options);
-    if (options.command == "init-ci") return command_init_ci(options);
+    using CommandHandler = int (*)(const Options &);
+    const std::pair<std::string_view, CommandHandler> commands[] = {
+        {"version", command_version},
+        {"--version", command_version},
+        {"analyze", command_analyze},
+        {"list-configs", command_list_configs},
+        {"explain-config", command_explain_config},
+        {"build", command_build},
+        {"test", command_test},
+        {"warnings", command_warnings},
+        {"sanitize", command_sanitize},
+        {"static-analysis", command_static_analysis},
+        {"benchmark", command_benchmark},
+        {"profile", command_profile},
+        {"optimize", command_optimize},
+        {"compare", command_compare},
+        {"results", command_results},
+        {"report", command_report},
+        {"doctor", command_doctor},
+        {"init-ci", command_init_ci}};
+    for (const auto &[name, handler] : commands) {
+      if (options.command == name) return handler(options);
+    }
     std::cerr << "unknown command: " << options.command << "\n";
     usage();
     return 2;
