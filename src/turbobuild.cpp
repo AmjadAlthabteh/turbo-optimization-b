@@ -472,6 +472,7 @@ Compiler probe_compiler(const std::string &id, const std::string &c, const std::
 
 std::vector<Compiler> detect_compilers() {
   std::vector<Compiler> compilers;
+  compilers.reserve(2);
   compilers.push_back(probe_compiler("gcc", "gcc", "g++"));
   compilers.push_back(probe_compiler("clang", "clang", "clang++"));
   return compilers;
